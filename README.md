@@ -31,9 +31,10 @@ The main objective of this project is to build a production-ready code review as
 
 ### Frontend
 - React.js
-- Tailwind CSS
-- Axios
-
+- JavaScript (ES6+)
+- CSS
+- HTML
+  
 ### Code Analysis
 - Pylint
 - Bandit
