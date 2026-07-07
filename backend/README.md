@@ -2,14 +2,15 @@
 
 This folder contains the FastAPI backend for the AI Code Review Assistant.
 
+
 ## Tech Stack
 
 - FastAPI
-- SQLAlchemy
-- PostgreSQL
-- JWT Authentication
+- Python
 - Pydantic
+- Uvicorn
 
+  
 ## Run
 
 ```bash
