@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse
-from app.utils.security import hash_password
+from app.schemas.user import UserCreate, UserResponse, Token
+from app.utils.security import (
+    create_access_token,
+    get_current_user,
+    hash_password,
+    verify_password,
+)
 
-from app.schemas.user import UserCreate, UserResponse, UserLogin, Token
-from app.utils.security import hash_password, verify_password, create_access_token
-
-from app.utils.security import get_current_user
-from fastapi.security import OAuth2PasswordRequestForm
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
@@ -40,10 +41,6 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-
-@router.post("/login", response_model=Token)
-
-
 @router.post("/login", response_model=Token)
 def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -71,7 +68,6 @@ def login_user(
         "access_token": access_token,
         "token_type": "bearer"
     }
-
 
 
 @router.get("/me", response_model=UserResponse)

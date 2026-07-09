@@ -1,6 +1,34 @@
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import api from '../services/api'
 
 function Dashboard() {
+  const [uploads, setUploads] = useState([])
+
+  useEffect(() => {
+    const fetchUploads = async () => {
+      try {
+        const token = localStorage.getItem('token')
+
+        if (!token) {
+          return
+        }
+
+        const response = await api.get('/upload/history', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        setUploads(response.data)
+      } catch (error) {
+        console.error('Failed to fetch uploads:', error)
+      }
+    }
+
+    fetchUploads()
+  }, [])
+
   return (
     <section className="dashboard">
       <div className="hero-section">
@@ -38,7 +66,7 @@ function Dashboard() {
 
         <div className="stat-card">
           <h3>Files Uploaded</h3>
-          <p>0</p>
+          <p>{uploads.length}</p>
         </div>
 
         <div className="stat-card">
@@ -52,38 +80,22 @@ function Dashboard() {
         </div>
       </div>
 
-      <h2 className="section-title">Analysis Features</h2>
+      <h2 className="section-title">Recent Uploads</h2>
 
       <div className="feature-grid">
-        <div className="feature-card">
-          <h3>📊 Code Quality</h3>
-          <p>Analyze coding standards, unused variables, syntax issues, and maintainability using Pylint.</p>
-        </div>
-
-        <div className="feature-card">
-          <h3>🛡 Security Scan</h3>
-          <p>Detect common security vulnerabilities using Bandit before your code reaches production.</p>
-        </div>
-
-        <div className="feature-card">
-          <h3>📈 Complexity</h3>
-          <p>Measure cyclomatic complexity and maintainability index using Radon.</p>
-        </div>
-
-        <div className="feature-card">
-          <h3>🤖 AI Review</h3>
-          <p>Generate bug reports, refactoring suggestions, naming improvements, and best practices.</p>
-        </div>
-
-        <div className="feature-card">
-          <h3>📑 Review History</h3>
-          <p>View previous reviews, detailed findings, and structured analysis reports.</p>
-        </div>
-
-        <div className="feature-card">
-          <h3>🔐 Secure Access</h3>
-          <p>JWT authentication keeps accounts and code review history protected.</p>
-        </div>
+        {uploads.length === 0 ? (
+          <div className="feature-card">
+            <h3>No uploads yet</h3>
+            <p>Upload your first Python file to see it here.</p>
+          </div>
+        ) : (
+          uploads.slice(0, 3).map((upload) => (
+            <div className="feature-card" key={upload.id}>
+              <h3>📄 {upload.filename}</h3>
+              <p>Uploaded at: {new Date(upload.uploaded_at).toLocaleString()}</p>
+            </div>
+          ))
+        )}
       </div>
     </section>
   )

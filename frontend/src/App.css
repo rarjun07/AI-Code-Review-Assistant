@@ -446,3 +446,16 @@ font-size:16px;
 font-weight:bold;
 cursor:pointer;
 }
+
+
+
+
+.success-message {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.error-message {
+  color: #dc2626;
+  font-weight: 700;
+}
