@@ -13,6 +13,7 @@ from app.services.openai_service import generate_ai_review
 from app.services.pylint_service import run_pylint
 from app.services.radon_service import run_radon
 from app.utils.security import get_current_user
+from app.utils.validation import validate_python_upload
 
 UPLOAD_DIR = "app/uploads"
 
@@ -24,22 +25,16 @@ async def upload_code_file(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if not file.filename or not file.filename.lower().endswith(".py"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only Python .py files are allowed",
-        )
-
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-
     try:
         content = await file.read()
+        safe_filename = validate_python_upload(file.filename, content)
+        file_path = os.path.join(UPLOAD_DIR, safe_filename)
 
         with open(file_path, "wb") as buffer:
             buffer.write(content)
 
         uploaded_file = UploadedFile(
-            filename=file.filename,
+            filename=safe_filename,
             filepath=file_path,
             uploaded_by=current_user.id,
         )
@@ -54,7 +49,7 @@ async def upload_code_file(
         code = content.decode("utf-8", errors="replace")
         documentation_report = generate_documentation(
             code,
-            file.filename,
+            safe_filename,
         )
         ai_review = generate_ai_review(
             code,
@@ -64,7 +59,7 @@ async def upload_code_file(
         )
 
         analysis_report = AnalysisReport(
-            filename=file.filename,
+            filename=safe_filename,
             pylint_report=pylint_report,
             bandit_report=bandit_report,
             radon_report=radon_report,

@@ -392,6 +392,16 @@ Display Report
 
 ---
 
+##  Day 12
+
+- Upload Validation
+- Registration Validation
+- Safer Filename Handling
+- Improved Exception Handling
+- Validation Test Cases
+
+---
+
 #  Screenshots
 
 ## Dashboard
