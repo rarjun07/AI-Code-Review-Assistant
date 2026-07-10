@@ -361,6 +361,16 @@ Display Report
 
 ---
 
+##  Day 9
+
+- AI Review Severity Levels
+- Severity Summary Counts
+- Critical, High, Medium, Low, and Info Labels
+- Severity Findings on Upload Page
+- Severity Findings in Report History
+
+---
+
 #  Screenshots
 
 ## Dashboard

@@ -785,6 +785,114 @@ cursor:pointer;
   margin-bottom: 0;
 }
 
+.ai-review-alert {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+  color: #9a3412;
+  margin-top: 22px;
+  padding: 18px;
+}
+
+.ai-review-alert p {
+  color: #9a3412;
+  margin: 8px 0 0;
+}
+
+.ai-empty-text {
+  color: #6b7280;
+  margin: 0;
+}
+
+.severity-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin: 22px 0;
+}
+
+.severity-summary-grid div {
+  border-radius: 14px;
+  padding: 16px;
+  text-align: center;
+}
+
+.severity-summary-grid span {
+  display: block;
+  font-size: 13px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.severity-summary-grid strong {
+  font-size: 26px;
+}
+
+.severity-finding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.severity-finding-card {
+  border-left: 6px solid #0891b2;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.severity-finding-card h4 {
+  margin: 12px 0 8px;
+}
+
+.severity-finding-card p {
+  margin: 8px 0 0;
+}
+
+.severity-finding-header {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.severity-finding-header span {
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  padding: 6px 10px;
+  text-transform: uppercase;
+}
+
+.severity-critical {
+  background: #fee2e2;
+  border-color: #991b1b;
+  color: #991b1b;
+}
+
+.severity-high {
+  background: #ffedd5;
+  border-color: #c2410c;
+  color: #c2410c;
+}
+
+.severity-medium {
+  background: #fef3c7;
+  border-color: #b45309;
+  color: #b45309;
+}
+
+.severity-low {
+  background: #dcfce7;
+  border-color: #15803d;
+  color: #15803d;
+}
+
+.severity-info {
+  background: #e0f2fe;
+  border-color: #0369a1;
+  color: #0369a1;
+}
+
 .report-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -853,7 +961,8 @@ cursor:pointer;
   .report-summary-grid,
   .report-mini-stats,
   .report-mini-stats-two,
-  .ai-review-grid {
+  .ai-review-grid,
+  .severity-summary-grid {
     grid-template-columns: 1fr;
   }
 

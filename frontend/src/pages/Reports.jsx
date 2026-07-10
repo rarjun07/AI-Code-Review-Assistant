@@ -85,6 +85,34 @@ function Reports() {
     return 'issue-default'
   }
 
+  const renderAiList = (items) => {
+    if (!items || items.length === 0) {
+      return <p className="ai-empty-text">No items reported.</p>
+    }
+
+    return (
+      <ul>
+        {items.map((item, index) => (
+          <li key={`${item}-${index}`}>{item}</li>
+        ))}
+      </ul>
+    )
+  }
+
+  const getSeverityClass = (severity) => {
+    const normalizedSeverity = severity?.toLowerCase()
+
+    if (normalizedSeverity === 'critical') return 'severity-critical'
+    if (normalizedSeverity === 'high') return 'severity-high'
+    if (normalizedSeverity === 'medium') return 'severity-medium'
+    if (normalizedSeverity === 'low') return 'severity-low'
+
+    return 'severity-info'
+  }
+
+  const severitySummary = aiReview?.severity_summary || {}
+  const aiFindings = aiReview?.findings || []
+
   return (
     <section className="reports-page">
       <div className="reports-container">
@@ -424,85 +452,130 @@ function Reports() {
                       </span>
                     </div>
 
-                    <p>{aiReview.summary}</p>
+                    {aiReview.status === 'completed' ? (
+                      <>
+                        <p>{aiReview.summary}</p>
 
-                    <div className="ai-review-grid">
-                      <div>
-                        <h3>Strengths</h3>
-                        <ul>
-                          {(aiReview.strengths || []).map(
-                            (item, index) => (
-                              <li key={`strength-${index}`}>
-                                {item}
-                              </li>
-                            )
-                          )}
-                        </ul>
-                      </div>
+                        <div className="severity-summary-grid">
+                          <div className="severity-critical">
+                            <span>Critical</span>
+                            <strong>
+                              {severitySummary.critical || 0}
+                            </strong>
+                          </div>
 
-                      <div>
-                        <h3>Bugs</h3>
-                        <ul>
-                          {(aiReview.bugs || []).map(
-                            (item, index) => (
-                              <li key={`bug-${index}`}>{item}</li>
-                            )
-                          )}
-                        </ul>
-                      </div>
+                          <div className="severity-high">
+                            <span>High</span>
+                            <strong>
+                              {severitySummary.high || 0}
+                            </strong>
+                          </div>
 
-                      <div>
-                        <h3>Security</h3>
-                        <ul>
-                          {(
-                            aiReview.security_recommendations || []
-                          ).map((item, index) => (
-                            <li key={`security-${index}`}>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                          <div className="severity-medium">
+                            <span>Medium</span>
+                            <strong>
+                              {severitySummary.medium || 0}
+                            </strong>
+                          </div>
 
-                      <div>
-                        <h3>Refactoring</h3>
-                        <ul>
-                          {(
-                            aiReview.refactoring_suggestions || []
-                          ).map((item, index) => (
-                            <li key={`refactor-${index}`}>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                          <div className="severity-low">
+                            <span>Low</span>
+                            <strong>
+                              {severitySummary.low || 0}
+                            </strong>
+                          </div>
 
-                      <div>
-                        <h3>Performance</h3>
-                        <ul>
-                          {(
-                            aiReview.performance_recommendations || []
-                          ).map((item, index) => (
-                            <li key={`performance-${index}`}>
-                              {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                          <div className="severity-info">
+                            <span>Info</span>
+                            <strong>
+                              {severitySummary.info || 0}
+                            </strong>
+                          </div>
+                        </div>
 
-                      <div>
-                        <h3>Best Practices</h3>
-                        <ul>
-                          {(aiReview.best_practices || []).map(
-                            (item, index) => (
-                              <li key={`best-practice-${index}`}>
-                                {item}
-                              </li>
-                            )
-                          )}
-                        </ul>
+                        <h3>Severity Findings</h3>
+
+                        {aiFindings.length === 0 ? (
+                          <p>
+                            No AI findings with severity levels
+                            were reported.
+                          </p>
+                        ) : (
+                          <div className="severity-finding-list">
+                            {aiFindings.map((finding, index) => (
+                              <div
+                                className={`severity-finding-card ${getSeverityClass(
+                                  finding.severity
+                                )}`}
+                                key={`${finding.title}-${index}`}
+                              >
+                                <div className="severity-finding-header">
+                                  <span>
+                                    {finding.severity || 'Info'}
+                                  </span>
+                                  <strong>
+                                    {finding.category || 'General'}
+                                  </strong>
+                                </div>
+
+                                <h4>{finding.title}</h4>
+                                <p>{finding.description}</p>
+
+                                {finding.suggestion && (
+                                  <p>
+                                    <strong>Suggestion:</strong>{' '}
+                                    {finding.suggestion}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="ai-review-grid">
+                          <div>
+                            <h3>Strengths</h3>
+                            {renderAiList(aiReview.strengths)}
+                          </div>
+
+                          <div>
+                            <h3>Bugs</h3>
+                            {renderAiList(aiReview.bugs)}
+                          </div>
+
+                          <div>
+                            <h3>Security</h3>
+                            {renderAiList(
+                              aiReview.security_recommendations
+                            )}
+                          </div>
+
+                          <div>
+                            <h3>Refactoring</h3>
+                            {renderAiList(
+                              aiReview.refactoring_suggestions
+                            )}
+                          </div>
+
+                          <div>
+                            <h3>Performance</h3>
+                            {renderAiList(
+                              aiReview.performance_recommendations
+                            )}
+                          </div>
+
+                          <div>
+                            <h3>Best Practices</h3>
+                            {renderAiList(aiReview.best_practices)}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="ai-review-alert">
+                        <strong>AI review could not run.</strong>
+                        <p>{aiReview.summary}</p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
               </>
