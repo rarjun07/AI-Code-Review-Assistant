@@ -1,17 +1,13 @@
 import os
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.upload import UploadedFile
 from app.models.user import User
+from app.services.pylint_service import run_pylint
 from app.utils.security import get_current_user
-
-router = APIRouter(
-    prefix="/upload",
-    tags=["Upload"]
-)
 
 UPLOAD_DIR = "app/uploads"
 
@@ -45,13 +41,16 @@ async def upload_code_file(
     db.commit()
     db.refresh(uploaded_file)
 
+    pylint_report = run_pylint(file_path)
+
     return {
-        "message": "File uploaded successfully",
+        "message": "File uploaded and analyzed successfully",
         "id": uploaded_file.id,
         "filename": uploaded_file.filename,
         "filepath": uploaded_file.filepath,
         "uploaded_by": current_user.email,
-        "uploaded_at": uploaded_file.uploaded_at
+        "uploaded_at": uploaded_file.uploaded_at,
+        "pylint_report": pylint_report
     }
 
 
