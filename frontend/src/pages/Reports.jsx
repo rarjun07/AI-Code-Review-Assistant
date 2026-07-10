@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import api from '../services/api'
 
 function Reports() {
   const [reports, setReports] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
   const [error, setError] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterType, setFilterType] = useState('all')
+  const [sortOrder, setSortOrder] = useState('newest')
 
   useEffect(() => {
     const fetchReports = async () => {
@@ -114,6 +117,62 @@ function Reports() {
   const severitySummary = aiReview?.severity_summary || {}
   const aiFindings = aiReview?.findings || []
 
+  const filteredReports = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase()
+
+    return reports
+      .filter((report) => {
+        const matchesSearch =
+          !normalizedSearch ||
+          report.filename?.toLowerCase().includes(normalizedSearch) ||
+          String(report.id).includes(normalizedSearch)
+
+        if (!matchesSearch) {
+          return false
+        }
+
+        if (filterType === 'security') {
+          return report.bandit_report?.total_issues > 0
+        }
+
+        if (filterType === 'clean') {
+          return (
+            (report.pylint_report?.issues?.length || 0) === 0 &&
+            (report.bandit_report?.total_issues || 0) === 0
+          )
+        }
+
+        if (filterType === 'ai') {
+          return report.ai_review?.status === 'completed'
+        }
+
+        if (filterType === 'documentation') {
+          return report.documentation_report?.status === 'completed'
+        }
+
+        return true
+      })
+      .sort((firstReport, secondReport) => {
+        if (sortOrder === 'oldest') {
+          return (
+            new Date(firstReport.created_at) -
+            new Date(secondReport.created_at)
+          )
+        }
+
+        if (sortOrder === 'filename') {
+          return firstReport.filename.localeCompare(
+            secondReport.filename
+          )
+        }
+
+        return (
+          new Date(secondReport.created_at) -
+          new Date(firstReport.created_at)
+        )
+      })
+  }, [filterType, reports, searchTerm, sortOrder])
+
   return (
     <section className="reports-page">
       <div className="reports-container">
@@ -121,9 +180,47 @@ function Reports() {
           <h1>Static Analysis Reports</h1>
 
           <p>
-            View previously saved Pylint, Bandit, and Radon
-            analysis results.
+            Search, filter, and review previously saved analysis
+            results.
           </p>
+        </div>
+
+        <div className="reports-controls">
+          <label>
+            Search
+            <input
+              type="search"
+              placeholder="Search by filename or report ID"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </label>
+
+          <label>
+            Filter
+            <select
+              value={filterType}
+              onChange={(event) => setFilterType(event.target.value)}
+            >
+              <option value="all">All reports</option>
+              <option value="security">Security issues</option>
+              <option value="clean">Clean reports</option>
+              <option value="ai">AI reviewed</option>
+              <option value="documentation">Documented</option>
+            </select>
+          </label>
+
+          <label>
+            Sort
+            <select
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value)}
+            >
+              <option value="newest">Newest first</option>
+              <option value="oldest">Oldest first</option>
+              <option value="filename">Filename A-Z</option>
+            </select>
+          </label>
         </div>
 
         {error && (
@@ -132,7 +229,12 @@ function Reports() {
 
         <div className="reports-layout">
           <aside className="reports-list">
-            <h2>Saved Reports</h2>
+            <div className="reports-list-header">
+              <h2>Saved Reports</h2>
+              <span>
+                {filteredReports.length} of {reports.length}
+              </span>
+            </div>
 
             {reports.length === 0 ? (
               <div className="report-list-empty">
@@ -142,8 +244,16 @@ function Reports() {
                   first report.
                 </p>
               </div>
+            ) : filteredReports.length === 0 ? (
+              <div className="report-list-empty">
+                <h3>No matching reports</h3>
+                <p>
+                  Change the search text or filter to see more
+                  reports.
+                </p>
+              </div>
             ) : (
-              reports.map((report) => (
+              filteredReports.map((report) => (
                 <button
                   className={`report-list-card ${
                     selectedReport?.id === report.id
@@ -155,6 +265,18 @@ function Reports() {
                 >
                   <h3>📄 {report.filename}</h3>
                   <p>Report ID: {report.id}</p>
+                  <div className="report-list-badges">
+                    {report.bandit_report?.total_issues > 0 && (
+                      <span className="badge-danger">Security</span>
+                    )}
+                    {report.ai_review?.status === 'completed' && (
+                      <span className="badge-info">AI</span>
+                    )}
+                    {report.documentation_report?.status ===
+                      'completed' && (
+                      <span className="badge-docs">Docs</span>
+                    )}
+                  </div>
                   <p>
                     {new Date(report.created_at).toLocaleString()}
                   </p>

@@ -382,6 +382,16 @@ Display Report
 
 ---
 
+##  Day 11
+
+- Review History Search
+- Report Filtering
+- Report Sorting
+- Report Count Summary
+- Report Type Badges
+
+---
+
 #  Screenshots
 
 ## Dashboard
