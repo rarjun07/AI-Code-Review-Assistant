@@ -12,6 +12,7 @@ function MainLayout() {
         <div className="nav-links">
           <NavLink to="/">Dashboard</NavLink>
           <NavLink to="/upload">Upload Code</NavLink>
+          <NavLink to="/reports">Reports</NavLink>
           <NavLink to="/login">Login</NavLink>
           <NavLink to="/register" className="nav-btn">Register</NavLink>
         </div>
