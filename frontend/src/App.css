@@ -756,6 +756,64 @@ cursor:pointer;
   border-top: 6px solid #0891b2;
 }
 
+.report-card-documentation {
+  border-top: 6px solid #4f46e5;
+}
+
+.documentation-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin: 22px 0;
+}
+
+.documentation-stats div {
+  background: #f8fafc;
+  border-radius: 14px;
+  padding: 18px;
+  text-align: center;
+}
+
+.documentation-stats span {
+  color: #6b7280;
+  display: block;
+  font-size: 14px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.documentation-stats strong {
+  font-size: 26px;
+}
+
+.documentation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.documentation-item {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.documentation-item h4 {
+  margin: 0 0 8px;
+}
+
+.documentation-item p {
+  margin: 0 0 10px;
+}
+
+.documentation-item span {
+  color: #6b7280;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .ai-review-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -962,7 +1020,8 @@ cursor:pointer;
   .report-mini-stats,
   .report-mini-stats-two,
   .ai-review-grid,
-  .severity-summary-grid {
+  .severity-summary-grid,
+  .documentation-stats {
     grid-template-columns: 1fr;
   }
 

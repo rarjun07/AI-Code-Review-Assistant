@@ -371,6 +371,17 @@ Display Report
 
 ---
 
+##  Day 10
+
+- Automatic Documentation Generator
+- Function Documentation Extraction
+- Class Documentation Extraction
+- Documentation Saved with Reports
+- Documentation Display on Upload Page
+- Documentation Display in Report History
+
+---
+
 #  Screenshots
 
 ## Dashboard

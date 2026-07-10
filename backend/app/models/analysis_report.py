@@ -36,6 +36,11 @@ class AnalysisReport(Base):
         nullable=True
     )
 
+    documentation_report = Column(
+        JSON,
+        nullable=True
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

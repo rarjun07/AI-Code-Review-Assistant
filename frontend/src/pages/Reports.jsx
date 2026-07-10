@@ -64,6 +64,7 @@ function Reports() {
     selectedReport?.bandit_report?.issues || []
 
   const aiReview = selectedReport?.ai_review
+  const documentationReport = selectedReport?.documentation_report
 
   const maintainabilityGrade =
     selectedReport?.radon_report?.maintainability
@@ -575,6 +576,91 @@ function Reports() {
                         <strong>AI review could not run.</strong>
                         <p>{aiReview.summary}</p>
                       </div>
+                    )}
+                  </div>
+                )}
+
+                {documentationReport && (
+                  <div className="report-card report-card-documentation">
+                    <div className="report-section-header">
+                      <div>
+                        <h2>Generated Documentation</h2>
+                        <p>
+                          Function and class documentation generated
+                          from the uploaded Python file.
+                        </p>
+                      </div>
+
+                      <span
+                        className={`report-status ${
+                          documentationReport.status === 'completed'
+                            ? 'status-good'
+                            : 'status-warning'
+                        }`}
+                      >
+                        {documentationReport.status === 'completed'
+                          ? 'Generated'
+                          : 'Needs Fix'}
+                      </span>
+                    </div>
+
+                    <p>{documentationReport.summary}</p>
+
+                    <div className="documentation-stats">
+                      <div>
+                        <span>Functions</span>
+                        <strong>
+                          {documentationReport.functions?.length || 0}
+                        </strong>
+                      </div>
+
+                      <div>
+                        <span>Classes</span>
+                        <strong>
+                          {documentationReport.classes?.length || 0}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <h3>Functions</h3>
+
+                    {documentationReport.functions?.length ? (
+                      <div className="documentation-list">
+                        {documentationReport.functions.map((item) => (
+                          <div
+                            className="documentation-item"
+                            key={`function-${item.name}-${item.line_number}`}
+                          >
+                            <h4>{item.name}</h4>
+                            <p>{item.summary}</p>
+                            <span>Line {item.line_number}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No top-level functions found.</p>
+                    )}
+
+                    <h3>Classes</h3>
+
+                    {documentationReport.classes?.length ? (
+                      <div className="documentation-list">
+                        {documentationReport.classes.map((item) => (
+                          <div
+                            className="documentation-item"
+                            key={`class-${item.name}-${item.line_number}`}
+                          >
+                            <h4>{item.name}</h4>
+                            <p>{item.docstring}</p>
+                            <span>
+                              Line {item.line_number} ·{' '}
+                              {item.method_count} method(s)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No classes found.</p>
                     )}
                   </div>
                 )}

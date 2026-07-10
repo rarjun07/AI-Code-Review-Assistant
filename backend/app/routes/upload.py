@@ -8,6 +8,7 @@ from app.models.analysis_report import AnalysisReport
 from app.models.upload import UploadedFile
 from app.models.user import User
 from app.services.bandit_service import run_bandit
+from app.services.documentation_service import generate_documentation
 from app.services.openai_service import generate_ai_review
 from app.services.pylint_service import run_pylint
 from app.services.radon_service import run_radon
@@ -51,6 +52,10 @@ async def upload_code_file(
         bandit_report = run_bandit(file_path)
         radon_report = run_radon(file_path)
         code = content.decode("utf-8", errors="replace")
+        documentation_report = generate_documentation(
+            code,
+            file.filename,
+        )
         ai_review = generate_ai_review(
             code,
             pylint_report,
@@ -64,6 +69,7 @@ async def upload_code_file(
             bandit_report=bandit_report,
             radon_report=radon_report,
             ai_review=ai_review,
+            documentation_report=documentation_report,
             user_id=current_user.id,
             upload_id=uploaded_file.id,
         )
@@ -84,6 +90,7 @@ async def upload_code_file(
             "bandit_report": bandit_report,
             "radon_report": radon_report,
             "ai_review": ai_review,
+            "documentation_report": documentation_report,
         }
 
     except HTTPException:

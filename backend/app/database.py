@@ -25,13 +25,21 @@ def ensure_analysis_report_columns():
         for column in inspector.get_columns("analysis_reports")
     }
 
-    if "ai_review" in columns:
-        return
+    missing_columns = []
+
+    if "ai_review" not in columns:
+        missing_columns.append(
+            "ALTER TABLE analysis_reports ADD COLUMN ai_review JSON"
+        )
+
+    if "documentation_report" not in columns:
+        missing_columns.append(
+            "ALTER TABLE analysis_reports ADD COLUMN documentation_report JSON"
+        )
 
     with engine.begin() as connection:
-        connection.execute(
-            text("ALTER TABLE analysis_reports ADD COLUMN ai_review JSON")
-        )
+        for statement in missing_columns:
+            connection.execute(text(statement))
 
 
 def get_db():

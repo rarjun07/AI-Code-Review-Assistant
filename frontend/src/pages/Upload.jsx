@@ -10,6 +10,7 @@ function Upload() {
   const [banditReport, setBanditReport] = useState(null)
   const [radonReport, setRadonReport] = useState(null)
   const [aiReview, setAiReview] = useState(null)
+  const [documentationReport, setDocumentationReport] = useState(null)
 
   const [analysisTime, setAnalysisTime] = useState('')
 
@@ -21,6 +22,7 @@ function Upload() {
     setBanditReport(null)
     setRadonReport(null)
     setAiReview(null)
+    setDocumentationReport(null)
 
     setAnalysisTime('')
 
@@ -55,6 +57,7 @@ function Upload() {
       setBanditReport(response.data.bandit_report)
       setRadonReport(response.data.radon_report)
       setAiReview(response.data.ai_review)
+      setDocumentationReport(response.data.documentation_report)
 
       setAnalysisTime(new Date().toLocaleString())
       setFile(null)
@@ -123,6 +126,7 @@ function Upload() {
     setBanditReport(null)
     setRadonReport(null)
     setAiReview(null)
+    setDocumentationReport(null)
 
     setAnalysisTime('')
   }
@@ -565,7 +569,97 @@ function Upload() {
           </div>
         )}
 
-        {(pylintReport || banditReport || radonReport || aiReview) && (
+        {documentationReport && (
+          <div className="report-card report-card-documentation">
+            <div className="report-header">
+              <div>
+                <h2>Generated Documentation</h2>
+
+                <p>
+                  Automatic documentation generated from the
+                  uploaded Python source code.
+                </p>
+              </div>
+
+              <span
+                className={`report-status ${
+                  documentationReport.status === 'completed'
+                    ? 'status-good'
+                    : 'status-warning'
+                }`}
+              >
+                {documentationReport.status === 'completed'
+                  ? 'Generated'
+                  : 'Needs Fix'}
+              </span>
+            </div>
+
+            <p>{documentationReport.summary}</p>
+
+            <div className="documentation-stats">
+              <div>
+                <span>Functions</span>
+                <strong>
+                  {documentationReport.functions?.length || 0}
+                </strong>
+              </div>
+
+              <div>
+                <span>Classes</span>
+                <strong>
+                  {documentationReport.classes?.length || 0}
+                </strong>
+              </div>
+            </div>
+
+            <h3>Functions</h3>
+
+            {documentationReport.functions?.length ? (
+              <div className="documentation-list">
+                {documentationReport.functions.map((item) => (
+                  <div
+                    className="documentation-item"
+                    key={`function-${item.name}-${item.line_number}`}
+                  >
+                    <h4>{item.name}</h4>
+                    <p>{item.summary}</p>
+                    <span>Line {item.line_number}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>No top-level functions found.</p>
+            )}
+
+            <h3>Classes</h3>
+
+            {documentationReport.classes?.length ? (
+              <div className="documentation-list">
+                {documentationReport.classes.map((item) => (
+                  <div
+                    className="documentation-item"
+                    key={`class-${item.name}-${item.line_number}`}
+                  >
+                    <h4>{item.name}</h4>
+                    <p>{item.docstring}</p>
+                    <span>
+                      Line {item.line_number} · {item.method_count}{' '}
+                      method(s)
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>No classes found.</p>
+            )}
+          </div>
+        )}
+
+        {(pylintReport ||
+          banditReport ||
+          radonReport ||
+          aiReview ||
+          documentationReport) && (
           <button
             className="secondary-btn analyze-again-btn"
             onClick={handleReset}
