@@ -8,7 +8,8 @@ from app.models.upload import UploadedFile
 from app.models.user import User
 from app.services.pylint_service import run_pylint
 from app.utils.security import get_current_user
-
+from app.services.bandit_service import run_bandit
+from app.services.radon_service import run_radon
 UPLOAD_DIR = "app/uploads"
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -42,6 +43,8 @@ async def upload_code_file(
     db.refresh(uploaded_file)
 
     pylint_report = run_pylint(file_path)
+    bandit_report = run_bandit(file_path)
+    radon_report = run_radon(file_path)
 
     return {
         "message": "File uploaded and analyzed successfully",
@@ -50,7 +53,9 @@ async def upload_code_file(
         "filepath": uploaded_file.filepath,
         "uploaded_by": current_user.email,
         "uploaded_at": uploaded_file.uploaded_at,
-        "pylint_report": pylint_report
+        "pylint_report": pylint_report,
+        "bandit_report": bandit_report,
+        "radon_report": radon_report,
     }
 
 

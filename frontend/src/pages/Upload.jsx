@@ -5,13 +5,21 @@ function Upload() {
   const [file, setFile] = useState(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [report, setReport] = useState(null)
+
+  const [pylintReport, setPylintReport] = useState(null)
+  const [banditReport, setBanditReport] = useState(null)
+  const [radonReport, setRadonReport] = useState(null)
+
   const [analysisTime, setAnalysisTime] = useState('')
 
   const handleUpload = async () => {
     setMessage('')
     setError('')
-    setReport(null)
+
+    setPylintReport(null)
+    setBanditReport(null)
+    setRadonReport(null)
+
     setAnalysisTime('')
 
     if (!file) {
@@ -40,7 +48,11 @@ function Upload() {
       setMessage(
         `File uploaded and analyzed successfully: ${response.data.filename}`
       )
-      setReport(response.data.pylint_report)
+
+      setPylintReport(response.data.pylint_report)
+      setBanditReport(response.data.bandit_report)
+      setRadonReport(response.data.radon_report)
+
       setAnalysisTime(new Date().toLocaleString())
       setFile(null)
     } catch (err) {
@@ -48,29 +60,29 @@ function Upload() {
     }
   }
 
-  const issues = report?.issues || []
+  const pylintIssues = pylintReport?.issues || []
 
-  const errors = issues.filter(
+  const pylintErrors = pylintIssues.filter(
     (issue) => issue.type === 'error'
   ).length
 
-  const warnings = issues.filter(
+  const pylintWarnings = pylintIssues.filter(
     (issue) => issue.type === 'warning'
   ).length
 
-  const conventions = issues.filter(
+  const pylintConventions = pylintIssues.filter(
     (issue) => issue.type === 'convention'
   ).length
 
-  const getReportStatus = () => {
-    if (errors === 0 && issues.length <= 2) {
+  const getPylintStatus = () => {
+    if (pylintErrors === 0 && pylintIssues.length <= 2) {
       return {
         label: 'Excellent',
         className: 'status-good',
       }
     }
 
-    if (errors <= 2) {
+    if (pylintErrors <= 2) {
       return {
         label: 'Needs Improvement',
         className: 'status-warning',
@@ -91,15 +103,38 @@ function Upload() {
     return 'issue-default'
   }
 
+  const getBanditIssueClass = (severity) => {
+    if (severity === 'HIGH') return 'issue-error'
+    if (severity === 'MEDIUM') return 'issue-warning'
+    if (severity === 'LOW') return 'issue-convention'
+
+    return 'issue-default'
+  }
+
   const handleReset = () => {
-    setReport(null)
+    setFile(null)
     setMessage('')
     setError('')
-    setFile(null)
+
+    setPylintReport(null)
+    setBanditReport(null)
+    setRadonReport(null)
+
     setAnalysisTime('')
   }
 
-  const reportStatus = getReportStatus()
+  const pylintStatus = getPylintStatus()
+
+  const analyzedFileName = message.replace(
+    'File uploaded and analyzed successfully: ',
+    ''
+  )
+
+  const maintainabilityGrade =
+    radonReport?.maintainability
+      ?.trim()
+      .split(' - ')
+      .pop() || 'N/A'
 
   return (
     <section className="upload-page">
@@ -107,8 +142,8 @@ function Upload() {
         <h1>Upload Python Code</h1>
 
         <p>
-          Upload your Python (.py) files and receive code quality
-          analysis using Pylint.
+          Upload a Python (.py) file to analyze code quality,
+          security vulnerabilities, complexity, and maintainability.
         </p>
 
         <div className="file-box">
@@ -118,7 +153,10 @@ function Upload() {
           <input
             type="file"
             accept=".py"
-            onChange={(event) => setFile(event.target.files[0])}
+            onChange={(event) => {
+              const selectedFile = event.target.files?.[0] || null
+              setFile(selectedFile)
+            }}
           />
         </div>
 
@@ -144,78 +182,73 @@ function Upload() {
           <h3>About This Analysis</h3>
 
           <p>
-            Pylint checks Python code for coding standards,
-            possible errors, naming conventions, import problems,
-            and general code quality.
+            Pylint checks code quality, Bandit detects security
+            vulnerabilities, and Radon measures complexity and
+            maintainability.
           </p>
         </div>
 
-        {report && (
+        {pylintReport && (
           <div className="report-card">
             <div className="report-header">
               <div>
                 <h2>📊 Pylint Code Quality Report</h2>
 
                 <p>
-                  Static code analysis result for the uploaded
+                  Static code-quality analysis for the uploaded
                   Python file.
                 </p>
 
                 <p>
-                  <strong>File:</strong>{' '}
-                  {message.replace(
-                    'File uploaded and analyzed successfully: ',
-                    ''
-                  )}
+                  <strong>File:</strong> {analyzedFileName}
                 </p>
 
                 <p>
-                  <strong>Analysis Time:</strong>{' '}
-                  {analysisTime}
+                  <strong>Analysis Time:</strong> {analysisTime}
                 </p>
               </div>
 
               <span
-                className={`report-status ${reportStatus.className}`}
+                className={`report-status ${pylintStatus.className}`}
               >
-                {reportStatus.label}
+                {pylintStatus.label}
               </span>
             </div>
 
             <div className="report-stats">
               <div className="score-card">
                 <h3>⭐ Score</h3>
-                <p>{report.score || 'N/A'}/10</p>
+                <p>{pylintReport.score || 'N/A'}/10</p>
               </div>
 
               <div className="total-card">
                 <h3>📊 Total Issues</h3>
-                <p>{issues.length}</p>
+                <p>{pylintIssues.length}</p>
               </div>
 
               <div className="error-card">
                 <h3>🔴 Errors</h3>
-                <p>{errors}</p>
+                <p>{pylintErrors}</p>
               </div>
 
               <div className="warning-card">
                 <h3>🟡 Warnings</h3>
-                <p>{warnings}</p>
+                <p>{pylintWarnings}</p>
               </div>
 
               <div className="convention-card">
                 <h3>🟣 Conventions</h3>
-                <p>{conventions}</p>
+                <p>{pylintConventions}</p>
               </div>
             </div>
 
             <h3>Issues Found</h3>
 
-            {issues.length === 0 ? (
-              <p>No issues found. Great job!</p>
+            {pylintIssues.length === 0 ? (
+              <p>No Pylint issues found. Great job!</p>
             ) : (
               <div className="issue-list">
-                {issues.map((issue, index) => (
+                {pylintIssues.map((issue, index) => (
                   <div
                     className={`issue-card ${getIssueClass(
                       issue.type
@@ -239,14 +272,145 @@ function Upload() {
                 ))}
               </div>
             )}
-
-            <button
-              className="secondary-btn analyze-again-btn"
-              onClick={handleReset}
-            >
-              Analyze Another File
-            </button>
           </div>
+        )}
+
+        {banditReport && (
+          <div className="report-card">
+            <div className="report-header">
+              <div>
+                <h2>🛡 Bandit Security Report</h2>
+
+                <p>
+                  Security vulnerability analysis for the uploaded
+                  Python file.
+                </p>
+              </div>
+
+              <span
+                className={`report-status ${
+                  banditReport.total_issues === 0
+                    ? 'status-good'
+                    : 'status-danger'
+                }`}
+              >
+                {banditReport.total_issues === 0
+                  ? 'No Security Issues'
+                  : 'Security Issues Found'}
+              </span>
+            </div>
+
+            <div className="report-stats bandit-stats">
+              <div className="total-card">
+                <h3>📊 Total Issues</h3>
+                <p>{banditReport.total_issues}</p>
+              </div>
+
+              <div className="error-card">
+                <h3>🔴 High Severity</h3>
+                <p>{banditReport.high_severity}</p>
+              </div>
+
+              <div className="warning-card">
+                <h3>🟡 Medium Severity</h3>
+                <p>{banditReport.medium_severity}</p>
+              </div>
+
+              <div className="score-card">
+                <h3>🟢 Low Severity</h3>
+                <p>{banditReport.low_severity}</p>
+              </div>
+            </div>
+
+            <h3>Security Findings</h3>
+
+            {banditReport.issues.length === 0 ? (
+              <p>No security vulnerabilities were detected.</p>
+            ) : (
+              <div className="issue-list">
+                {banditReport.issues.map((issue, index) => (
+                  <div
+                    className={`issue-card ${getBanditIssueClass(
+                      issue.issue_severity
+                    )}`}
+                    key={`${issue.test_id}-${issue.line_number}-${index}`}
+                  >
+                    <strong>
+                      {issue.issue_severity} SEVERITY
+                    </strong>
+
+                    <p>{issue.issue_text}</p>
+
+                    <div className="issue-meta">
+                      <span>
+                        Line: {issue.line_number}
+                      </span>
+
+                      <span>
+                        Test: {issue.test_id}
+                      </span>
+
+                      <span>
+                        Confidence: {issue.issue_confidence}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {radonReport && (
+          <div className="report-card">
+            <div className="report-header">
+              <div>
+                <h2>📈 Radon Complexity Report</h2>
+
+                <p>
+                  Cyclomatic-complexity and maintainability analysis.
+                </p>
+              </div>
+
+              <span className="report-status status-good">
+                Maintainability {maintainabilityGrade}
+              </span>
+            </div>
+
+            <div className="report-stats radon-stats">
+              <div className="score-card">
+                <h3>Maintainability Grade</h3>
+                <p>{maintainabilityGrade}</p>
+              </div>
+
+              <div className="total-card">
+                <h3>Complexity Items</h3>
+                <p>{radonReport.grades?.length || 0}</p>
+              </div>
+            </div>
+
+            <h3>Complexity Details</h3>
+
+            {radonReport.complexity ? (
+              <pre className="complexity-output">
+                {radonReport.complexity}
+              </pre>
+            ) : (
+              <p>
+                No functions or classes were found for cyclomatic
+                complexity analysis.
+              </p>
+            )}
+          </div>
+        )}
+
+        {(pylintReport || banditReport || radonReport) && (
+          <button
+            className="secondary-btn analyze-again-btn"
+            onClick={handleReset}
+          >
+            Analyze Another File
+          </button>
         )}
       </div>
     </section>

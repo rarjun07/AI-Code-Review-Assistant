@@ -621,3 +621,22 @@ cursor:pointer;
   margin-top: 24px;
   cursor: pointer;
 }
+
+
+.bandit-stats {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.radon-stats {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.complexity-output {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 20px;
+  border-radius: 14px;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  line-height: 1.7;
+}
