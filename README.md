@@ -16,7 +16,7 @@ Users can:
 - Upload Python (.py) files
 - Analyze code using multiple analysis tools
 - View previous reports
-- Prepare the project for AI-powered review using OpenAI (next phase)
+- Review code with AI-powered recommendations using OpenAI
 
 ---
 
@@ -117,7 +117,7 @@ Checks:
 
 ## AI
 
-- OpenAI API *(Day 8 onward)*
+- OpenAI API
 
 ---
 
@@ -205,6 +205,10 @@ SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+OPENAI_API_KEY=your_openai_api_key_here
+
+OPENAI_MODEL=gpt-4.1-mini
 ```
 
 ---
@@ -347,6 +351,16 @@ Display Report
 
 ---
 
+##  Day 8
+
+- OpenAI API Configuration
+- AI Code Review Service
+- AI Review Saved with Reports
+- AI Review Display on Upload Page
+- AI Review Display in Report History
+
+---
+
 #  Screenshots
 
 ## Dashboard
@@ -381,7 +395,6 @@ Display Report
 
 #  Future Enhancements
 
-- OpenAI Integration
 - AI Code Suggestions
 - Auto Code Fixes
 - Review Download (PDF)

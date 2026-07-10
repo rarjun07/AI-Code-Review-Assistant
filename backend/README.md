@@ -9,6 +9,21 @@ This folder contains the FastAPI backend for the AI Code Review Assistant.
 - Python
 - Pydantic
 - Uvicorn
+- OpenAI API
+
+
+## Environment
+
+Create a `.env` file in this backend folder.
+
+```env
+DATABASE_URL=postgresql://username:password@localhost:5432/ai_code_review_db
+SECRET_KEY=your_secret_key
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+```
 
   
 ## Run

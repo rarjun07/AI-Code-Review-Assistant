@@ -1,12 +1,12 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import Base, engine
+from app.database import Base, engine, ensure_analysis_report_columns
 from app.models import User
 from app.routes.auth import router as auth_router
-from app.routes.upload import upload_code_file
-from fastapi.middleware.cors import CORSMiddleware
-from app.routes.upload import upload_code_file, get_upload_history
 from app.routes.reports import get_report_by_id, get_reports
+from app.routes.upload import get_upload_history, upload_code_file
+
 app = FastAPI(
     title="AI Code Review Assistant",
     description="AI-powered Code Review Assistant built with FastAPI",
@@ -22,11 +22,11 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+ensure_analysis_report_columns()
 
 app.include_router(auth_router)
 app.post("/upload/code", tags=["Upload"])(upload_code_file)
 app.get("/upload/history", tags=["Upload"])(get_upload_history)
-
 
 
 app.get("/reports", tags=["Reports"])(get_reports)

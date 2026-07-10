@@ -752,6 +752,39 @@ cursor:pointer;
   border-top: 6px solid #16a34a;
 }
 
+.report-card-ai {
+  border-top: 6px solid #0891b2;
+}
+
+.ai-review-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.ai-review-grid div {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 18px;
+}
+
+.ai-review-grid h3 {
+  margin: 0 0 10px;
+}
+
+.ai-review-grid ul {
+  margin: 0;
+  padding-left: 18px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.ai-review-grid li:only-child {
+  margin-bottom: 0;
+}
+
 .report-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -819,7 +852,8 @@ cursor:pointer;
 @media (max-width: 900px) {
   .report-summary-grid,
   .report-mini-stats,
-  .report-mini-stats-two {
+  .report-mini-stats-two,
+  .ai-review-grid {
     grid-template-columns: 1fr;
   }
 

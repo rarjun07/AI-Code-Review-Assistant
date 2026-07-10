@@ -63,6 +63,8 @@ function Reports() {
   const banditIssues =
     selectedReport?.bandit_report?.issues || []
 
+  const aiReview = selectedReport?.ai_review
+
   const maintainabilityGrade =
     selectedReport?.radon_report?.maintainability
       ?.trim()
@@ -399,6 +401,110 @@ function Reports() {
                     </p>
                   )}
                 </div>
+
+                {aiReview && (
+                  <div className="report-card report-card-ai">
+                    <div className="report-section-header">
+                      <div>
+                        <h2>AI Code Review</h2>
+                        <p>
+                          AI-powered recommendations based on code
+                          and static-analysis results.
+                        </p>
+                      </div>
+
+                      <span
+                        className={`report-status ${
+                          aiReview.status === 'completed'
+                            ? 'status-good'
+                            : 'status-warning'
+                        }`}
+                      >
+                        {aiReview.overall_rating || 'Not available'}
+                      </span>
+                    </div>
+
+                    <p>{aiReview.summary}</p>
+
+                    <div className="ai-review-grid">
+                      <div>
+                        <h3>Strengths</h3>
+                        <ul>
+                          {(aiReview.strengths || []).map(
+                            (item, index) => (
+                              <li key={`strength-${index}`}>
+                                {item}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h3>Bugs</h3>
+                        <ul>
+                          {(aiReview.bugs || []).map(
+                            (item, index) => (
+                              <li key={`bug-${index}`}>{item}</li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h3>Security</h3>
+                        <ul>
+                          {(
+                            aiReview.security_recommendations || []
+                          ).map((item, index) => (
+                            <li key={`security-${index}`}>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h3>Refactoring</h3>
+                        <ul>
+                          {(
+                            aiReview.refactoring_suggestions || []
+                          ).map((item, index) => (
+                            <li key={`refactor-${index}`}>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h3>Performance</h3>
+                        <ul>
+                          {(
+                            aiReview.performance_recommendations || []
+                          ).map((item, index) => (
+                            <li key={`performance-${index}`}>
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h3>Best Practices</h3>
+                        <ul>
+                          {(aiReview.best_practices || []).map(
+                            (item, index) => (
+                              <li key={`best-practice-${index}`}>
+                                {item}
+                              </li>
+                            )
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </main>
