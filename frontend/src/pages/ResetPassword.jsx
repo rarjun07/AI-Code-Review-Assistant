@@ -1,26 +1,62 @@
 import { useState } from 'react'
 import { Code2 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import api from '../services/api'
 
 function ResetPassword() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   const [email, setEmail] = useState('')
+  const [resetToken, setResetToken] = useState(
+    searchParams.get('token') || ''
+  )
   const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleResetPassword = async (event) => {
+  const handleResetRequest = async (event) => {
     event.preventDefault()
     setMessage('')
     setError('')
     setIsSubmitting(true)
 
     try {
-      await api.post('/auth/reset-password', {
+      const response = await api.post('/auth/password-reset/request', {
         email,
+      })
+
+      if (response.data.reset_token) {
+        setResetToken(response.data.reset_token)
+        setMessage('Local reset link created. Choose a new password.')
+      } else {
+        setMessage(response.data.message)
+      }
+    } catch (err) {
+      const detail = err.response?.data?.detail
+      setError(Array.isArray(detail) ? detail[0]?.msg : detail || 'Request failed.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleResetPassword = async (event) => {
+    event.preventDefault()
+    setMessage('')
+    setError('')
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match.')
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      await api.post('/auth/password-reset/confirm', {
+        reset_token: resetToken,
         new_password: newPassword,
       })
 
@@ -54,8 +90,8 @@ function ResetPassword() {
         <h1>Reset Password</h1>
 
         <p>
-          Enter your account email and choose a new password for your
-          AI Code Review Assistant account.
+          Request a protected, time-limited recovery link before choosing
+          a new password for your account.
         </p>
 
         <ul>
@@ -66,44 +102,67 @@ function ResetPassword() {
       </div>
 
       <div className="auth-card">
-        <h2>New Password</h2>
+        <h2>{resetToken ? 'New Password' : 'Recover Account'}</h2>
 
-        <form className="auth-form" onSubmit={handleResetPassword}>
-          <label htmlFor="reset-email">Email</label>
-          <input
-            id="reset-email"
-            name="email"
-            type="email"
-            placeholder="Enter email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            autoComplete="email"
-            required
-          />
+        {!resetToken ? (
+          <form className="auth-form" onSubmit={handleResetRequest}>
+            <label htmlFor="reset-email">Email</label>
+            <input
+              id="reset-email"
+              name="email"
+              type="email"
+              placeholder="Enter email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              required
+            />
 
-          <label htmlFor="reset-password">New Password</label>
-          <input
-            id="reset-password"
-            name="new-password"
-            type="password"
-            placeholder="Password123"
-            value={newPassword}
-            onChange={(event) => setNewPassword(event.target.value)}
-            autoComplete="new-password"
-            required
-          />
+            {message && <p className="success-message">{message}</p>}
+            {error && <p className="error-message">{error}</p>}
 
-          <p className="form-hint">
-            Use at least 8 characters with letters and numbers.
-          </p>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating link...' : 'Request Reset Link'}
+            </button>
+          </form>
+        ) : (
+          <form className="auth-form" onSubmit={handleResetPassword}>
+            <label htmlFor="reset-password">New Password</label>
+            <input
+              id="reset-password"
+              name="new-password"
+              type="password"
+              placeholder="Password123"
+              value={newPassword}
+              onChange={(event) => setNewPassword(event.target.value)}
+              autoComplete="new-password"
+              required
+            />
 
-          {message && <p className="success-message">{message}</p>}
-          {error && <p className="error-message">{error}</p>}
+            <label htmlFor="confirm-reset-password">Confirm Password</label>
+            <input
+              id="confirm-reset-password"
+              name="confirm-password"
+              type="password"
+              placeholder="Repeat new password"
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              autoComplete="new-password"
+              required
+            />
 
-          <button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? 'Resetting...' : 'Reset Password'}
-          </button>
-        </form>
+            <p className="form-hint">
+              Use at least 8 characters with letters and numbers.
+            </p>
+
+            {message && <p className="success-message">{message}</p>}
+            {error && <p className="error-message">{error}</p>}
+
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Resetting...' : 'Reset Password'}
+            </button>
+          </form>
+        )}
 
         <Link className="auth-link" to="/login">
           Back to login

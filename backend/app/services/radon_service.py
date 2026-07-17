@@ -8,6 +8,7 @@ def run_radon(file_path: str):
         ["radon", "cc", file_path, "-s"],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
     # Maintainability Index
@@ -15,6 +16,7 @@ def run_radon(file_path: str):
         ["radon", "mi", file_path],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
     complexity_output = cc_result.stdout

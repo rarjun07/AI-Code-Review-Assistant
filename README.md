@@ -414,6 +414,18 @@ Display Report
 
 ---
 
+##  Day 14
+
+- Secure, time-limited password reset tokens
+- Single-use reset behavior after a password change
+- Generic recovery responses that prevent account discovery
+- Safer production defaults and environment configuration
+- Unique private filenames and automatic failed-upload cleanup
+- Analysis process timeouts and protected error responses
+- Security regression tests for authentication and uploads
+
+---
+
 #  Screenshots
 
 ## Dashboard

@@ -39,7 +39,7 @@ def validate_python_upload(filename: str, content: bytes) -> str:
 
     if len(content) > MAX_UPLOAD_SIZE_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="Uploaded file is too large. Maximum size is 1 MB",
         )
 

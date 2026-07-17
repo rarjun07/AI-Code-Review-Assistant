@@ -18,6 +18,11 @@ class UserCreate(BaseModel):
 
         return cleaned_name
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
@@ -62,9 +67,23 @@ class UserUpdate(BaseModel):
 
         return cleaned_name
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
-class PasswordReset(BaseModel):
+
+class PasswordResetRequest(BaseModel):
     email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+
+class PasswordResetConfirm(BaseModel):
+    reset_token: str = Field(min_length=20, max_length=2048)
     new_password: str = Field(min_length=8, max_length=128)
 
     @field_validator("new_password")

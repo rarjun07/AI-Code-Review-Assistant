@@ -15,6 +15,7 @@ def run_pylint(file_path: str):
         ],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
     try:
@@ -32,6 +33,7 @@ def run_pylint(file_path: str):
         ],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
     score = None

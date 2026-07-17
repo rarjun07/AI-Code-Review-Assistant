@@ -3,13 +3,24 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import PasswordReset, Token, UserCreate, UserResponse, UserUpdate
+from app.schemas.user import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from app.utils.security import (
     create_access_token,
+    create_password_reset_token,
+    decode_password_reset_token,
     get_current_user,
     hash_password,
+    reset_token_matches_password,
     verify_password,
 )
 
@@ -54,7 +65,8 @@ def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.email == form_data.username).first()
+    email = form_data.username.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
 
     if not user:
         raise HTTPException(
@@ -120,17 +132,49 @@ def update_profile(
     return current_user
 
 
-@router.post("/reset-password")
-def reset_password(
-    password_data: PasswordReset,
+@router.post("/password-reset/request")
+def request_password_reset(
+    password_data: PasswordResetRequest,
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.email == password_data.email).first()
 
-    if not user:
+    response = {
+        "message": (
+            "If an account exists for that email, password reset "
+            "instructions have been created."
+        )
+    }
+
+    if user and settings.DEBUG:
+        response["reset_token"] = create_password_reset_token(
+            user.id,
+            user.password_hash,
+        )
+
+    # Production deployments should email a URL containing this token.
+    # It is returned only in explicit DEBUG mode for local demonstrations.
+    return response
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    password_data: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    payload = decode_password_reset_token(password_data.reset_token)
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+
+    if not user or not reset_token_matches_password(payload, user.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No account found with this email",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset link is invalid or has expired",
+        )
+
+    if verify_password(password_data.new_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password",
         )
 
     user.password_hash = hash_password(password_data.new_password)

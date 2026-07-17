@@ -1,14 +1,36 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
+from fastapi.testclient import TestClient
+from jose import jwt
 from pydantic import ValidationError
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-from app.schemas.user import PasswordReset, UserCreate, UserUpdate
+from app.config import settings
+from app.database import get_db
+from app.models.user import User
+from app.routes.auth import router as auth_router
+from app.schemas.user import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    UserCreate,
+    UserUpdate,
+)
 from app.services.documentation_service import generate_documentation
 from app.services.report_export_service import (
     build_report_html,
     build_report_markdown,
+)
+from app.utils.security import (
+    create_password_reset_token,
+    decode_password_reset_token,
+    hash_password,
+    reset_token_matches_password,
+    verify_password,
 )
 from app.utils.validation import sanitize_filename, validate_python_upload
 
@@ -34,16 +56,23 @@ class UploadValidationTests(unittest.TestCase):
 
         self.assertEqual(context.exception.status_code, 400)
 
+    def test_validate_python_upload_rejects_oversized_file(self):
+        with self.assertRaises(HTTPException) as context:
+            validate_python_upload("large.py", b"x" * (1024 * 1024 + 1))
+
+        self.assertEqual(context.exception.status_code, 413)
+
 
 class UserValidationTests(unittest.TestCase):
     def test_user_create_accepts_valid_payload(self):
         user = UserCreate(
             name="Arjun",
-            email="arjun@example.com",
+            email="ARJUN@example.com",
             password="Password123",
         )
 
         self.assertEqual(user.name, "Arjun")
+        self.assertEqual(user.email, "arjun@example.com")
 
     def test_user_create_rejects_weak_password(self):
         with self.assertRaises(ValidationError):
@@ -63,10 +92,159 @@ class UserValidationTests(unittest.TestCase):
 
     def test_password_reset_rejects_weak_password(self):
         with self.assertRaises(ValidationError):
-            PasswordReset(
-                email="arjun@example.com",
+            PasswordResetConfirm(
+                reset_token="a" * 20,
                 new_password="password",
             )
+
+    def test_password_reset_request_accepts_email(self):
+        request = PasswordResetRequest(email="ARJUN@example.com")
+
+        self.assertEqual(request.email, "arjun@example.com")
+
+
+class PasswordResetSecurityTests(unittest.TestCase):
+    def test_reset_token_contains_scoped_user_identity(self):
+        token = create_password_reset_token(42, "stored-password-hash")
+        payload = decode_password_reset_token(token)
+
+        self.assertEqual(payload["sub"], "42")
+        self.assertEqual(payload["purpose"], "password_reset")
+        self.assertTrue(payload["jti"])
+        self.assertNotEqual(payload["pwd"], "stored-password-hash")
+
+    def test_reset_token_is_invalid_after_password_changes(self):
+        token = create_password_reset_token(42, "old-password-hash")
+        payload = decode_password_reset_token(token)
+
+        self.assertTrue(
+            reset_token_matches_password(payload, "old-password-hash")
+        )
+        self.assertFalse(
+            reset_token_matches_password(payload, "new-password-hash")
+        )
+
+    def test_expired_reset_token_is_rejected(self):
+        expired_token = jwt.encode(
+            {
+                "sub": "42",
+                "purpose": "password_reset",
+                "pwd": "fingerprint",
+                "jti": "expired-token",
+                "exp": datetime.now(timezone.utc) - timedelta(minutes=1),
+            },
+            settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
+
+        with self.assertRaises(HTTPException) as context:
+            decode_password_reset_token(expired_token)
+
+        self.assertEqual(context.exception.status_code, 400)
+
+
+class PasswordResetEndpointTests(unittest.TestCase):
+    def setUp(self):
+        self.engine = create_engine(
+            "sqlite://",
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+        )
+        User.__table__.create(self.engine)
+        self.session_factory = sessionmaker(bind=self.engine)
+
+        def override_get_db():
+            database = self.session_factory()
+            try:
+                yield database
+            finally:
+                database.close()
+
+        test_app = FastAPI()
+        test_app.include_router(auth_router)
+        test_app.dependency_overrides[get_db] = override_get_db
+        self.client = TestClient(test_app)
+        self.previous_debug = settings.DEBUG
+        settings.DEBUG = True
+
+        database = self.session_factory()
+        database.add(
+            User(
+                name="Arjun",
+                email="arjun@example.com",
+                password_hash=hash_password("Password123"),
+            )
+        )
+        database.commit()
+        database.close()
+
+    def tearDown(self):
+        settings.DEBUG = self.previous_debug
+        self.engine.dispose()
+
+    def test_reset_request_does_not_reveal_account_existence(self):
+        existing_response = self.client.post(
+            "/auth/password-reset/request",
+            json={"email": "arjun@example.com"},
+        )
+        missing_response = self.client.post(
+            "/auth/password-reset/request",
+            json={"email": "missing@example.com"},
+        )
+
+        self.assertEqual(existing_response.status_code, 200)
+        self.assertEqual(missing_response.status_code, 200)
+        self.assertEqual(
+            existing_response.json()["message"],
+            missing_response.json()["message"],
+        )
+        self.assertIn("reset_token", existing_response.json())
+        self.assertNotIn("reset_token", missing_response.json())
+
+    def test_reset_token_cannot_be_reused_after_password_change(self):
+        request_response = self.client.post(
+            "/auth/password-reset/request",
+            json={"email": "arjun@example.com"},
+        )
+        token = request_response.json()["reset_token"]
+
+        first_response = self.client.post(
+            "/auth/password-reset/confirm",
+            json={
+                "reset_token": token,
+                "new_password": "NewPassword456",
+            },
+        )
+        second_response = self.client.post(
+            "/auth/password-reset/confirm",
+            json={
+                "reset_token": token,
+                "new_password": "AnotherPassword789",
+            },
+        )
+
+        self.assertEqual(first_response.status_code, 200)
+        self.assertEqual(second_response.status_code, 400)
+
+        database = self.session_factory()
+        user = database.query(User).filter_by(email="arjun@example.com").one()
+        self.assertTrue(verify_password("NewPassword456", user.password_hash))
+        database.close()
+
+    def test_access_token_cannot_be_used_as_reset_token(self):
+        access_style_token = jwt.encode(
+            {
+                "sub": "42",
+                "exp": datetime.now(timezone.utc) + timedelta(minutes=5),
+            },
+            settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
+
+        with self.assertRaises(HTTPException) as context:
+            decode_password_reset_token(access_style_token)
+
+        self.assertEqual(context.exception.status_code, 400)
 
 
 class DocumentationMetricsTests(unittest.TestCase):

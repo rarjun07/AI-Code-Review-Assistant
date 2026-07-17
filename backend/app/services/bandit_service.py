@@ -12,6 +12,7 @@ def run_bandit(file_path: str):
         ],
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
     try:
