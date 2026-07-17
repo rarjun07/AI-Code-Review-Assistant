@@ -129,8 +129,8 @@ function MainLayout() {
         >
           <span className="brand-icon"><Code2 size={22} /></span>
           <span className="brand-copy">
-            <strong>CodeLens AI</strong>
-            <small>Review Assistant</small>
+            <strong>AI Code Review</strong>
+            <small>Assistant</small>
           </span>
         </NavLink>
 

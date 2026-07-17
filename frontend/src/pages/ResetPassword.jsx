@@ -47,7 +47,7 @@ function ResetPassword() {
       <div className="auth-left">
         <Link className="auth-brand" to="/">
           <span><Code2 size={21} /></span>
-          <div><strong>CodeLens AI</strong><small>Review Assistant</small></div>
+          <div><strong>AI Code Review</strong><small>Assistant</small></div>
         </Link>
 
         <span className="auth-eyebrow">Account recovery</span>
