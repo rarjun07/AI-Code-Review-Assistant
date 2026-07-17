@@ -1,11 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
+import {
+  ArrowUpDown,
+  BookOpen,
+  Bot,
+  Download,
+  FileCode2,
+  FileSearch,
+  Gauge,
+  Search,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  Trash2,
+  UploadCloud,
+} from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
 import api from '../services/api'
 
 function Reports() {
+  const [searchParams] = useSearchParams()
   const [reports, setReports] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
   const [error, setError] = useState('')
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useState(
+    () => searchParams.get('search') || ''
+  )
   const [filterType, setFilterType] = useState('all')
   const [sortOrder, setSortOrder] = useState('newest')
 
@@ -60,8 +79,80 @@ function Reports() {
     }
   }
 
+  const deleteReport = async (reportId) => {
+    const shouldDelete = window.confirm(
+      'Delete this review report permanently?'
+    )
+
+    if (!shouldDelete) {
+      return
+    }
+
+    try {
+      setError('')
+
+      const token = localStorage.getItem('token')
+
+      await api.delete(`/reports/${reportId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      const remainingReports = reports.filter(
+        (report) => report.id !== reportId
+      )
+
+      setReports(remainingReports)
+
+      if (selectedReport?.id === reportId) {
+        setSelectedReport(remainingReports[0] || null)
+      }
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || 'Failed to delete report.'
+      )
+    }
+  }
+
+  const exportReport = async (reportId, format) => {
+    try {
+      setError('')
+
+      const token = localStorage.getItem('token')
+
+      const response = await api.get(
+        `/reports/${reportId}/export/${format}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          responseType: 'blob',
+        }
+      )
+
+      const extension = format === 'markdown' ? 'md' : format
+      const url = window.URL.createObjectURL(response.data)
+      const link = document.createElement('a')
+
+      link.href = url
+      link.download = `ai-code-review-report-${reportId}.${extension}`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(
+        err.response?.data?.detail || `Failed to export ${format} report.`
+      )
+    }
+  }
+
   const pylintIssues =
     selectedReport?.pylint_report?.issues || []
+  const codeSmells = pylintIssues.filter((issue) =>
+    ['warning', 'convention', 'refactor'].includes(issue.type)
+  )
 
   const banditIssues =
     selectedReport?.bandit_report?.issues || []
@@ -176,18 +267,18 @@ function Reports() {
   return (
     <section className="reports-page">
       <div className="reports-container">
-        <div className="reports-header">
-          <h1>Static Analysis Reports</h1>
-
-          <p>
-            Search, filter, and review previously saved analysis
-            results.
-          </p>
+        <div className="reports-header page-intro">
+          <div>
+            <span className="page-kicker"><Sparkles size={15} /> Review library</span>
+            <h2>Every analysis, organized and ready to act on.</h2>
+            <p>Compare findings, revisit recommendations, and export a clean review for your team.</p>
+          </div>
+          <Link className="primary-btn" to="/upload"><UploadCloud size={18} /> New review</Link>
         </div>
 
         <div className="reports-controls">
           <label>
-            Search
+            <span><Search size={15} /> Search</span>
             <input
               type="search"
               placeholder="Search by filename or report ID"
@@ -197,7 +288,7 @@ function Reports() {
           </label>
 
           <label>
-            Filter
+            <span><SlidersHorizontal size={15} /> Filter</span>
             <select
               value={filterType}
               onChange={(event) => setFilterType(event.target.value)}
@@ -211,7 +302,7 @@ function Reports() {
           </label>
 
           <label>
-            Sort
+            <span><ArrowUpDown size={15} /> Sort</span>
             <select
               value={sortOrder}
               onChange={(event) => setSortOrder(event.target.value)}
@@ -224,7 +315,7 @@ function Reports() {
         </div>
 
         {error && (
-          <p className="error-message">{error}</p>
+          <p className="feedback-message feedback-error">{error}</p>
         )}
 
         <div className="reports-layout">
@@ -238,14 +329,17 @@ function Reports() {
 
             {reports.length === 0 ? (
               <div className="report-list-empty">
+                <span className="empty-state-icon"><FileSearch size={23} /></span>
                 <h3>No reports yet</h3>
                 <p>
                   Upload and analyze a Python file to create your
                   first report.
                 </p>
+                <Link to="/upload">Start a review</Link>
               </div>
             ) : filteredReports.length === 0 ? (
               <div className="report-list-empty">
+                <span className="empty-state-icon"><Search size={23} /></span>
                 <h3>No matching reports</h3>
                 <p>
                   Change the search text or filter to see more
@@ -263,8 +357,10 @@ function Reports() {
                   key={report.id}
                   onClick={() => openReport(report.id)}
                 >
-                  <h3>📄 {report.filename}</h3>
-                  <p>Report ID: {report.id}</p>
+                  <div className="report-list-title">
+                    <span><FileCode2 size={18} /></span>
+                    <div><h3>{report.filename}</h3><p>Report #{report.id}</p></div>
+                  </div>
                   <div className="report-list-badges">
                     {report.bandit_report?.total_issues > 0 && (
                       <span className="badge-danger">Security</span>
@@ -288,6 +384,7 @@ function Reports() {
           <main className="report-details">
             {!selectedReport ? (
               <div className="report-card">
+                <span className="empty-state-icon"><FileSearch size={23} /></span>
                 <h2>Select a report</h2>
                 <p>
                   Choose a saved report from the left side to view
@@ -297,7 +394,46 @@ function Reports() {
             ) : (
               <>
                 <div className="report-card report-summary-card">
-                  <h2>📊 Report Summary</h2>
+                  <div className="report-summary-header">
+                    <h2><FileSearch size={21} /> Report summary</h2>
+
+                    <div className="report-summary-actions">
+                      <button
+                        className="export-report-btn"
+                        type="button"
+                        onClick={() =>
+                          exportReport(selectedReport.id, 'pdf')
+                        }
+                      >
+                        <Download size={15} /> PDF
+                      </button>
+                      <button
+                        className="export-report-btn"
+                        type="button"
+                        onClick={() =>
+                          exportReport(selectedReport.id, 'markdown')
+                        }
+                      >
+                        <Download size={15} /> Markdown
+                      </button>
+                      <button
+                        className="export-report-btn"
+                        type="button"
+                        onClick={() =>
+                          exportReport(selectedReport.id, 'html')
+                        }
+                      >
+                        <Download size={15} /> HTML
+                      </button>
+                      <button
+                        className="delete-report-btn"
+                        type="button"
+                        onClick={() => deleteReport(selectedReport.id)}
+                      >
+                        <Trash2 size={15} /> Delete
+                      </button>
+                    </div>
+                  </div>
 
                   <div className="report-summary-grid">
                     <div>
@@ -324,7 +460,7 @@ function Reports() {
                 <div className="report-card report-card-pylint">
                   <div className="report-section-header">
                     <div>
-                      <h2>📊 Pylint Code Quality</h2>
+                      <h2><FileCode2 size={21} /> Pylint code quality</h2>
                       <p>
                         Coding standards, errors, warnings, and
                         conventions.
@@ -410,10 +546,62 @@ function Reports() {
                   )}
                 </div>
 
+                <div className="report-card report-card-code-smells">
+                  <div className="report-section-header">
+                    <div>
+                      <h2>Code Smells</h2>
+                      <p>
+                        Maintainability and style issues found from
+                        Pylint warnings, conventions, and refactor
+                        hints.
+                      </p>
+                    </div>
+
+                    <span
+                      className={`report-status ${
+                        codeSmells.length === 0
+                          ? 'status-good'
+                          : 'status-warning'
+                      }`}
+                    >
+                      {codeSmells.length} Found
+                    </span>
+                  </div>
+
+                  {codeSmells.length === 0 ? (
+                    <p>No code smells were detected.</p>
+                  ) : (
+                    <div className="issue-list">
+                      {codeSmells.map((issue, index) => (
+                        <div
+                          className={`issue-card code-smell-card ${getPylintIssueClass(
+                            issue.type
+                          )}`}
+                          key={`smell-${issue['message-id']}-${issue.line}-${index}`}
+                        >
+                          <strong>
+                            {issue.type.toUpperCase()}
+                          </strong>
+
+                          <p>{issue.message}</p>
+
+                          <div className="issue-meta">
+                            <span>Line: {issue.line}</span>
+                            <span>Rule: {issue.symbol}</span>
+                            <span>
+                              ID: {issue['message-id']}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="report-card report-card-bandit">
                   <div className="report-section-header">
                     <div>
-                      <h2>🛡 Bandit Security Analysis</h2>
+                      <h2><ShieldCheck size={21} /> Bandit security analysis</h2>
                       <p>
                         Security vulnerability findings and severity
                         levels.
@@ -509,7 +697,7 @@ function Reports() {
                 <div className="report-card report-card-radon">
                   <div className="report-section-header">
                     <div>
-                      <h2>📈 Radon Complexity Analysis</h2>
+                      <h2><Gauge size={21} /> Radon complexity analysis</h2>
                       <p>
                         Maintainability and cyclomatic-complexity
                         results.
@@ -557,7 +745,7 @@ function Reports() {
                   <div className="report-card report-card-ai">
                     <div className="report-section-header">
                       <div>
-                        <h2>AI Code Review</h2>
+                        <h2><Bot size={21} /> AI code review</h2>
                         <p>
                           AI-powered recommendations based on code
                           and static-analysis results.
@@ -674,6 +862,13 @@ function Reports() {
                           </div>
 
                           <div>
+                            <h3>Optimization</h3>
+                            {renderAiList(
+                              aiReview.optimization_suggestions
+                            )}
+                          </div>
+
+                          <div>
                             <h3>Refactoring</h3>
                             {renderAiList(
                               aiReview.refactoring_suggestions
@@ -684,6 +879,13 @@ function Reports() {
                             <h3>Performance</h3>
                             {renderAiList(
                               aiReview.performance_recommendations
+                            )}
+                          </div>
+
+                          <div>
+                            <h3>Better Naming</h3>
+                            {renderAiList(
+                              aiReview.naming_suggestions
                             )}
                           </div>
 
@@ -706,7 +908,7 @@ function Reports() {
                   <div className="report-card report-card-documentation">
                     <div className="report-section-header">
                       <div>
-                        <h2>Generated Documentation</h2>
+                        <h2><BookOpen size={21} /> Generated documentation</h2>
                         <p>
                           Function and class documentation generated
                           from the uploaded Python file.
@@ -783,6 +985,16 @@ function Reports() {
                       </div>
                     ) : (
                       <p>No classes found.</p>
+                    )}
+
+                    <h3>README Summary</h3>
+
+                    {documentationReport.markdown ? (
+                      <pre className="readme-summary">
+                        {documentationReport.markdown}
+                      </pre>
+                    ) : (
+                      <p>No README summary generated.</p>
                     )}
                   </div>
                 )}

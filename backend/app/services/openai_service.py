@@ -21,7 +21,9 @@ def _empty_ai_review(status: str, message: str) -> dict:
         "strengths": [],
         "bugs": [],
         "security_recommendations": [],
+        "optimization_suggestions": [],
         "performance_recommendations": [],
+        "naming_suggestions": [],
         "refactoring_suggestions": [],
         "best_practices": [],
     }
@@ -64,7 +66,9 @@ Return only valid JSON using this exact structure:
   "strengths": ["strength 1", "strength 2"],
   "bugs": ["bug or possible issue"],
   "security_recommendations": ["security recommendation"],
+  "optimization_suggestions": ["optimization suggestion"],
   "performance_recommendations": ["performance recommendation"],
+  "naming_suggestions": ["better naming suggestion"],
   "refactoring_suggestions": ["refactoring suggestion"],
   "best_practices": ["best-practice suggestion"]
 }}
@@ -86,6 +90,21 @@ Radon report:
 
 
 def _normalize_ai_review(ai_review: dict) -> dict:
+    list_fields = [
+        "strengths",
+        "bugs",
+        "security_recommendations",
+        "optimization_suggestions",
+        "performance_recommendations",
+        "naming_suggestions",
+        "refactoring_suggestions",
+        "best_practices",
+    ]
+
+    for field in list_fields:
+        if not isinstance(ai_review.get(field), list):
+            ai_review[field] = []
+
     findings = ai_review.get("findings")
 
     if not isinstance(findings, list):

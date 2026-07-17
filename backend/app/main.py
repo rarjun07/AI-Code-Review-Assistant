@@ -4,7 +4,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.database import Base, engine, ensure_analysis_report_columns
 from app.models import User
 from app.routes.auth import router as auth_router
-from app.routes.reports import get_report_by_id, get_reports
+from app.routes.reports import (
+    delete_report,
+    export_report,
+    get_report_by_id,
+    get_reports,
+)
 from app.routes.upload import get_upload_history, upload_code_file
 
 app = FastAPI(
@@ -31,6 +36,10 @@ app.get("/upload/history", tags=["Upload"])(get_upload_history)
 
 app.get("/reports", tags=["Reports"])(get_reports)
 app.get("/reports/{report_id}", tags=["Reports"])(get_report_by_id)
+app.delete("/reports/{report_id}", tags=["Reports"])(delete_report)
+app.get("/reports/{report_id}/export/{export_format}", tags=["Reports"])(
+    export_report
+)
 
 
 @app.get("/")

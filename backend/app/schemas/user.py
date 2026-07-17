@@ -48,6 +48,31 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    email: EmailStr
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        cleaned_name = value.strip()
+
+        if not cleaned_name:
+            raise ValueError("Name cannot be empty")
+
+        return cleaned_name
+
+
+class PasswordReset(BaseModel):
+    email: EmailStr
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        return UserCreate.validate_password(value)
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

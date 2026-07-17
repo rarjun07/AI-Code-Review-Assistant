@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserResponse, Token
+from app.schemas.user import PasswordReset, Token, UserCreate, UserResponse, UserUpdate
 from app.utils.security import (
     create_access_token,
     get_current_user,
@@ -81,3 +81,69 @@ def login_user(
 @router.get("/me", response_model=UserResponse)
 def get_logged_in_user(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.put("/profile", response_model=UserResponse)
+def update_profile(
+    profile_data: UserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    existing_user = (
+        db.query(User)
+        .filter(
+            User.email == profile_data.email,
+            User.id != current_user.id,
+        )
+        .first()
+    )
+
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered",
+        )
+
+    current_user.name = profile_data.name
+    current_user.email = profile_data.email
+
+    try:
+        db.commit()
+        db.refresh(current_user)
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Profile update failed. Please try again.",
+        ) from exc
+
+    return current_user
+
+
+@router.post("/reset-password")
+def reset_password(
+    password_data: PasswordReset,
+    db: Session = Depends(get_db),
+):
+    user = db.query(User).filter(User.email == password_data.email).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email",
+        )
+
+    user.password_hash = hash_password(password_data.new_password)
+
+    try:
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Password reset failed. Please try again.",
+        ) from exc
+
+    return {
+        "message": "Password reset successfully"
+    }

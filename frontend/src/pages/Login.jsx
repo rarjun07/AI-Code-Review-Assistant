@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Code2 } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import api from '../services/api'
 
 function Login() {
   const navigate = useNavigate()
+  const location = useLocation()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -26,7 +28,7 @@ function Login() {
 
       setMessage('Login successful! Redirecting...')
       setTimeout(() => {
-        navigate('/upload')
+        navigate(location.state?.from || '/upload', { replace: true })
       }, 800)
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed.')
@@ -36,7 +38,13 @@ function Login() {
   return (
     <section className="auth-page">
       <div className="auth-left">
-        <h1>Welcome Back 👋</h1>
+        <Link className="auth-brand" to="/">
+          <span><Code2 size={21} /></span>
+          <div><strong>CodeLens AI</strong><small>Review Assistant</small></div>
+        </Link>
+
+        <span className="auth-eyebrow">Developer workspace</span>
+        <h1>Welcome back.</h1>
 
         <p>
           Sign in to upload your source code, manage previous reviews,
@@ -44,10 +52,10 @@ function Login() {
         </p>
 
         <ul>
-          <li>✔ AI Code Review</li>
-          <li>✔ Security Analysis</li>
-          <li>✔ Code Quality Reports</li>
-          <li>✔ Review History</li>
+          <li>AI-powered code review</li>
+          <li>Security and complexity analysis</li>
+          <li>Structured quality reports</li>
+          <li>Searchable review history</li>
         </ul>
       </div>
 
@@ -55,20 +63,28 @@ function Login() {
         <h2>Login</h2>
 
         <form className="auth-form" onSubmit={handleLogin}>
-          <label>Email</label>
+          <label htmlFor="login-email">Email</label>
           <input
+            id="login-email"
+            name="email"
             type="email"
             placeholder="Enter email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            required
           />
 
-          <label>Password</label>
+          <label htmlFor="login-password">Password</label>
           <input
+            id="login-password"
+            name="password"
             type="password"
             placeholder="Enter password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
           />
 
           {message && <p className="success-message">{message}</p>}
@@ -78,6 +94,14 @@ function Login() {
             Login
           </button>
         </form>
+
+        <Link className="auth-link" to="/reset-password">
+          Forgot password?
+        </Link>
+
+        <p className="auth-switch-text">
+          New here? <Link to="/register">Create an account</Link>
+        </p>
       </div>
     </section>
   )

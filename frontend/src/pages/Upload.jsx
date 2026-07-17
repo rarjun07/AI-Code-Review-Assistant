@@ -1,4 +1,16 @@
 import { useState } from 'react'
+import {
+  Bot,
+  Check,
+  FileCode2,
+  FileUp,
+  Gauge,
+  Info,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
+  UploadCloud,
+} from 'lucide-react'
 import api from '../services/api'
 
 function Upload() {
@@ -13,6 +25,7 @@ function Upload() {
   const [documentationReport, setDocumentationReport] = useState(null)
 
   const [analysisTime, setAnalysisTime] = useState('')
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const handleUpload = async () => {
     setMessage('')
@@ -40,6 +53,7 @@ function Upload() {
 
     const formData = new FormData()
     formData.append('file', file)
+    setIsAnalyzing(true)
 
     try {
       const response = await api.post('/upload/code', formData, {
@@ -63,10 +77,15 @@ function Upload() {
       setFile(null)
     } catch (err) {
       setError(err.response?.data?.detail || 'File upload failed.')
+    } finally {
+      setIsAnalyzing(false)
     }
   }
 
   const pylintIssues = pylintReport?.issues || []
+  const codeSmells = pylintIssues.filter((issue) =>
+    ['warning', 'convention', 'refactor'].includes(issue.type)
+  )
 
   const pylintErrors = pylintIssues.filter(
     (issue) => issue.type === 'error'
@@ -174,61 +193,90 @@ function Upload() {
 
   return (
     <section className="upload-page">
-      <div className="upload-container">
-        <h1>Upload Python Code</h1>
-
-        <p>
-          Upload a Python (.py) file to analyze code quality,
-          security vulnerabilities, complexity, and maintainability.
-        </p>
-
-        <div className="file-box">
-          <h2>📂 Select Python File</h2>
-          <p>Only .py files are allowed for now.</p>
-
-          <input
-            type="file"
-            accept=".py"
-            onChange={(event) => {
-              const selectedFile = event.target.files?.[0] || null
-              setFile(selectedFile)
-            }}
-          />
+      <header className="page-intro">
+        <div>
+          <span className="page-kicker"><Sparkles size={15} /> New analysis</span>
+          <h2>Turn a Python file into an actionable review.</h2>
+          <p>Select a source file and we will run five focused review stages in one workflow.</p>
         </div>
+        <span className="page-intro-badge"><ShieldCheck size={17} /> Validated uploads</span>
+      </header>
 
-        {file && (
-          <p>
-            <strong>Selected:</strong> {file.name}
-          </p>
-        )}
+      <ol className="workflow-stepper" aria-label="Review workflow">
+        <li className={file ? 'complete' : 'active'}><span>{file ? <Check size={16} /> : '1'}</span><div><strong>Select file</strong><small>Python source</small></div></li>
+        <li className={isAnalyzing ? 'active' : ''}><span>2</span><div><strong>Run analysis</strong><small>Five review engines</small></div></li>
+        <li className={pylintReport ? 'complete' : ''}><span>{pylintReport ? <Check size={16} /> : '3'}</span><div><strong>Review findings</strong><small>Prioritized results</small></div></li>
+      </ol>
 
-        {message && (
-          <p className="success-message">{message}</p>
-        )}
+      <div className="upload-container">
+        <div className="upload-intake-grid">
+          <div className="upload-intake-main">
+            <div className="file-box">
+              <span className="file-box-icon"><FileUp size={30} /></span>
+              <label className="file-box-label" htmlFor="python-file">
+                Choose a Python source file
+              </label>
+              <p id="python-file-help">Use a .py file up to 1 MB. Your filename is safely normalized.</p>
 
-        {error && (
-          <p className="error-message">{error}</p>
-        )}
+              <input
+                id="python-file"
+                name="python-file"
+                type="file"
+                accept=".py"
+                aria-describedby="python-file-help"
+                disabled={isAnalyzing}
+                onChange={(event) => {
+                  const selectedFile = event.target.files?.[0] || null
+                  setFile(selectedFile)
+                }}
+              />
+            </div>
 
-        <button onClick={handleUpload}>
-          Upload & Analyze
-        </button>
+            {file && (
+              <div className="selected-file-row">
+                <span><FileCode2 size={19} /></span>
+                <div><strong>{file.name}</strong><small>Ready for analysis</small></div>
+                <Check size={18} />
+              </div>
+            )}
 
-        <div className="info-card">
-          <h3>About This Analysis</h3>
+            {message && <p className="feedback-message feedback-success">{message}</p>}
+            {error && <p className="feedback-message feedback-error">{error}</p>}
 
-          <p>
-            Pylint checks code quality, Bandit detects security
-            vulnerabilities, and Radon measures complexity and
-            maintainability.
-          </p>
+            <button className="analyze-btn" onClick={handleUpload} disabled={isAnalyzing}>
+              <UploadCloud size={19} />
+              {isAnalyzing ? 'Analyzing your code...' : 'Run complete analysis'}
+            </button>
+
+            {isAnalyzing && (
+              <div className="analysis-progress" role="status">
+                <span className="progress-spinner" />
+                <div>
+                  <strong>Review in progress</strong>
+                  <p>Running code quality, security, complexity, documentation, and AI checks.</p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <aside className="analysis-toolkit">
+            <span className="analysis-toolkit-kicker"><Info size={15} /> Included in every review</span>
+            <h3>Five perspectives. One report.</h3>
+            <ul>
+              <li><span><Check size={15} /></span><div><strong>Pylint</strong><small>Quality and standards</small></div></li>
+              <li><span><ShieldCheck size={15} /></span><div><strong>Bandit</strong><small>Security vulnerabilities</small></div></li>
+              <li><span><Gauge size={15} /></span><div><strong>Radon</strong><small>Complexity and maintainability</small></div></li>
+              <li><span><Bot size={15} /></span><div><strong>AI review</strong><small>Prioritized recommendations</small></div></li>
+              <li><span><FileCode2 size={15} /></span><div><strong>Documentation</strong><small>Functions, classes, and metrics</small></div></li>
+            </ul>
+          </aside>
         </div>
 
         {pylintReport && (
           <div className="report-card">
             <div className="report-header">
               <div>
-                <h2>📊 Pylint Code Quality Report</h2>
+                <h2>Pylint code quality</h2>
 
                 <p>
                   Static code-quality analysis for the uploaded
@@ -253,27 +301,27 @@ function Upload() {
 
             <div className="report-stats">
               <div className="score-card">
-                <h3>⭐ Score</h3>
+                <h3>Score</h3>
                 <p>{pylintReport.score || 'N/A'}/10</p>
               </div>
 
               <div className="total-card">
-                <h3>📊 Total Issues</h3>
+                <h3>Total issues</h3>
                 <p>{pylintIssues.length}</p>
               </div>
 
               <div className="error-card">
-                <h3>🔴 Errors</h3>
+                <h3>Errors</h3>
                 <p>{pylintErrors}</p>
               </div>
 
               <div className="warning-card">
-                <h3>🟡 Warnings</h3>
+                <h3>Warnings</h3>
                 <p>{pylintWarnings}</p>
               </div>
 
               <div className="convention-card">
-                <h3>🟣 Conventions</h3>
+                <h3>Conventions</h3>
                 <p>{pylintConventions}</p>
               </div>
             </div>
@@ -311,11 +359,63 @@ function Upload() {
           </div>
         )}
 
+        {pylintReport && (
+          <div className="report-card report-card-code-smells">
+            <div className="report-header">
+              <div>
+                <h2>Code Smells</h2>
+
+                <p>
+                  Maintainability and style issues detected from
+                  Pylint warnings, conventions, and refactor hints.
+                </p>
+              </div>
+
+              <span
+                className={`report-status ${
+                  codeSmells.length === 0
+                    ? 'status-good'
+                    : 'status-warning'
+                }`}
+              >
+                {codeSmells.length} Found
+              </span>
+            </div>
+
+            {codeSmells.length === 0 ? (
+              <p>No code smells were detected.</p>
+            ) : (
+              <div className="issue-list">
+                {codeSmells.map((issue, index) => (
+                  <div
+                    className={`issue-card code-smell-card ${getIssueClass(
+                      issue.type
+                    )}`}
+                    key={`smell-${issue['message-id']}-${issue.line}-${index}`}
+                  >
+                    <strong>{issue.type.toUpperCase()}</strong>
+
+                    <p>{issue.message}</p>
+
+                    <div className="issue-meta">
+                      <span>Line: {issue.line}</span>
+                      <span>Rule: {issue.symbol}</span>
+                      <span>
+                        ID: {issue['message-id']}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {banditReport && (
           <div className="report-card">
             <div className="report-header">
               <div>
-                <h2>🛡 Bandit Security Report</h2>
+                <h2>Bandit security analysis</h2>
 
                 <p>
                   Security vulnerability analysis for the uploaded
@@ -338,22 +438,22 @@ function Upload() {
 
             <div className="report-stats bandit-stats">
               <div className="total-card">
-                <h3>📊 Total Issues</h3>
+                <h3>Total issues</h3>
                 <p>{banditReport.total_issues}</p>
               </div>
 
               <div className="error-card">
-                <h3>🔴 High Severity</h3>
+                <h3>High severity</h3>
                 <p>{banditReport.high_severity}</p>
               </div>
 
               <div className="warning-card">
-                <h3>🟡 Medium Severity</h3>
+                <h3>Medium severity</h3>
                 <p>{banditReport.medium_severity}</p>
               </div>
 
               <div className="score-card">
-                <h3>🟢 Low Severity</h3>
+                <h3>Low severity</h3>
                 <p>{banditReport.low_severity}</p>
               </div>
             </div>
@@ -401,7 +501,7 @@ function Upload() {
           <div className="report-card">
             <div className="report-header">
               <div>
-                <h2>📈 Radon Complexity Report</h2>
+                <h2>Radon complexity analysis</h2>
 
                 <p>
                   Cyclomatic-complexity and maintainability analysis.
@@ -545,6 +645,11 @@ function Upload() {
                   </div>
 
                   <div>
+                    <h3>Optimization</h3>
+                    {renderAiList(aiReview.optimization_suggestions)}
+                  </div>
+
+                  <div>
                     <h3>Refactoring</h3>
                     {renderAiList(aiReview.refactoring_suggestions)}
                   </div>
@@ -552,6 +657,11 @@ function Upload() {
                   <div>
                     <h3>Performance</h3>
                     {renderAiList(aiReview.performance_recommendations)}
+                  </div>
+
+                  <div>
+                    <h3>Better Naming</h3>
+                    {renderAiList(aiReview.naming_suggestions)}
                   </div>
 
                   <div>
@@ -652,6 +762,16 @@ function Upload() {
             ) : (
               <p>No classes found.</p>
             )}
+
+            <h3>README Summary</h3>
+
+            {documentationReport.markdown ? (
+              <pre className="readme-summary">
+                {documentationReport.markdown}
+              </pre>
+            ) : (
+              <p>No README summary generated.</p>
+            )}
           </div>
         )}
 
@@ -664,7 +784,7 @@ function Upload() {
             className="secondary-btn analyze-again-btn"
             onClick={handleReset}
           >
-            Analyze Another File
+            <RotateCcw size={17} /> Analyze another file
           </button>
         )}
       </div>

@@ -11,6 +11,16 @@ def _format_arguments(node: ast.FunctionDef) -> list[str]:
     return arguments
 
 
+def _node_line_count(node: ast.AST) -> int:
+    end_line = getattr(node, "end_lineno", None)
+    start_line = getattr(node, "lineno", None)
+
+    if not end_line or not start_line:
+        return 0
+
+    return end_line - start_line + 1
+
+
 def _function_summary(node: ast.FunctionDef) -> dict:
     docstring = ast.get_docstring(node)
     arguments = _format_arguments(node)
@@ -18,6 +28,7 @@ def _function_summary(node: ast.FunctionDef) -> dict:
     return {
         "name": node.name,
         "line_number": node.lineno,
+        "line_count": _node_line_count(node),
         "arguments": arguments,
         "docstring": docstring or "No docstring available.",
         "summary": (
@@ -87,6 +98,37 @@ def _build_markdown(documentation: dict) -> str:
     return "\n".join(lines)
 
 
+def _code_metrics(code: str, tree: ast.AST) -> dict:
+    functions = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    ]
+    classes = [
+        node
+        for node in ast.walk(tree)
+        if isinstance(node, ast.ClassDef)
+    ]
+    function_lengths = [
+        _node_line_count(node)
+        for node in functions
+        if _node_line_count(node) > 0
+    ]
+
+    average_function_length = (
+        round(sum(function_lengths) / len(function_lengths), 2)
+        if function_lengths
+        else 0
+    )
+
+    return {
+        "number_of_classes": len(classes),
+        "number_of_functions": len(functions),
+        "total_lines_of_code": len(code.splitlines()),
+        "average_function_length": average_function_length,
+    }
+
+
 def generate_documentation(code: str, filename: str) -> dict:
     try:
         tree = ast.parse(code)
@@ -99,6 +141,12 @@ def generate_documentation(code: str, filename: str) -> dict:
             "module_docstring": "Not available.",
             "functions": [],
             "classes": [],
+            "metrics": {
+                "number_of_classes": 0,
+                "number_of_functions": 0,
+                "total_lines_of_code": len(code.splitlines()),
+                "average_function_length": 0,
+            },
             "markdown": "",
         }
 
@@ -125,6 +173,7 @@ def generate_documentation(code: str, filename: str) -> dict:
         or "No module docstring available.",
         "functions": functions,
         "classes": classes,
+        "metrics": _code_metrics(code, tree),
     }
 
     documentation["markdown"] = _build_markdown(documentation)
