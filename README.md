@@ -84,7 +84,7 @@ Checks:
 
 ---
 
-# 🛠 Tech Stack
+## Tech Stack
 
 ## Backend
 
