@@ -1,15 +1,30 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.models.user import User
-from app.schemas.user import PasswordReset, Token, UserCreate, UserResponse, UserUpdate
+from app.services.password_reset_email_service import send_password_reset_email
+from app.services.password_reset_rate_limit_service import password_reset_rate_limiter
+from app.schemas.user import (
+    PasswordResetConfirm,
+    PasswordResetRequest,
+    Token,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from app.utils.security import (
     create_access_token,
+    create_password_reset_token,
+    decode_password_reset_token,
     get_current_user,
     hash_password,
+    reset_token_matches_password,
     verify_password,
 )
 
@@ -17,6 +32,8 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -54,7 +71,8 @@ def login_user(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.email == form_data.username).first()
+    email = form_data.username.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
 
     if not user:
         raise HTTPException(
@@ -72,10 +90,8 @@ def login_user(
         data={"sub": user.email}
     )
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    # "bearer" is the OAuth token type, not a credential.
+    return {"access_token": access_token, "token_type": "bearer"}  # nosec
 
 
 @router.get("/me", response_model=UserResponse)
@@ -120,17 +136,66 @@ def update_profile(
     return current_user
 
 
-@router.post("/reset-password")
-def reset_password(
-    password_data: PasswordReset,
+@router.post("/password-reset/request")
+def request_password_reset(
+    password_data: PasswordResetRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+
+    if not password_reset_rate_limiter.allow(password_data.email, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password reset requests. Please try again later.",
+        )
+
     user = db.query(User).filter(User.email == password_data.email).first()
 
-    if not user:
+    response = {
+        "message": (
+            "If an account exists for that email, password reset "
+            "instructions have been created."
+        )
+    }
+
+    if user:
+        reset_token = create_password_reset_token(
+            user.id,
+            user.password_hash,
+        )
+
+        if settings.DEBUG:
+            response["reset_token"] = reset_token
+        else:
+            try:
+                send_password_reset_email(user.email, reset_token)
+            except Exception:
+                # Keep the public response identical for existing and unknown
+                # accounts. Provider failures remain visible in server logs.
+                logger.exception("Password reset email delivery failed")
+
+    return response
+
+
+@router.post("/password-reset/confirm")
+def confirm_password_reset(
+    password_data: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    payload = decode_password_reset_token(password_data.reset_token)
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+
+    if not user or not reset_token_matches_password(payload, user.password_hash):
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No account found with this email",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password reset link is invalid or has expired",
+        )
+
+    if verify_password(password_data.new_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be different from the current password",
         )
 
     user.password_hash = hash_password(password_data.new_password)

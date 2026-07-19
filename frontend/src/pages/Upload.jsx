@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import {
   Bot,
   Check,
@@ -14,6 +14,7 @@ import {
 import api from '../services/api'
 
 function Upload() {
+  const fileInputRef = useRef(null)
   const [file, setFile] = useState(null)
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
@@ -75,6 +76,10 @@ function Upload() {
 
       setAnalysisTime(new Date().toLocaleString())
       setFile(null)
+
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'File upload failed.')
     } finally {
@@ -138,6 +143,11 @@ function Upload() {
 
   const handleReset = () => {
     setFile(null)
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+
     setMessage('')
     setError('')
 
@@ -219,9 +229,11 @@ function Upload() {
               <p id="python-file-help">Use a .py file up to 1 MB. Your filename is safely normalized.</p>
 
               <input
+                ref={fileInputRef}
                 id="python-file"
                 name="python-file"
                 type="file"
+                className="file-input-native"
                 accept=".py"
                 aria-describedby="python-file-help"
                 disabled={isAnalyzing}
@@ -230,6 +242,13 @@ function Upload() {
                   setFile(selectedFile)
                 }}
               />
+
+              <div className="file-picker-row">
+                <label className="file-picker-button" htmlFor="python-file">
+                  Choose File
+                </label>
+                <span>{file?.name || 'No file selected'}</span>
+              </div>
             </div>
 
             {file && (

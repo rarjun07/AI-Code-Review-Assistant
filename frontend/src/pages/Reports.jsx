@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   ArrowUpDown,
   BookOpen,
@@ -22,6 +22,10 @@ function Reports() {
   const [reports, setReports] = useState([])
   const [selectedReport, setSelectedReport] = useState(null)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [pendingDeleteId, setPendingDeleteId] = useState(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const deleteActionRef = useRef(null)
   const [searchTerm, setSearchTerm] = useState(
     () => searchParams.get('search') || ''
   )
@@ -59,6 +63,35 @@ function Reports() {
     fetchReports()
   }, [])
 
+  useEffect(() => {
+    if (!pendingDeleteId) {
+      return undefined
+    }
+
+    const closeDeleteConfirmation = (event) => {
+      if (event.key === 'Escape') {
+        setPendingDeleteId(null)
+        return
+      }
+
+      if (
+        event.type === 'pointerdown' &&
+        deleteActionRef.current &&
+        !deleteActionRef.current.contains(event.target)
+      ) {
+        setPendingDeleteId(null)
+      }
+    }
+
+    document.addEventListener('keydown', closeDeleteConfirmation)
+    document.addEventListener('pointerdown', closeDeleteConfirmation)
+
+    return () => {
+      document.removeEventListener('keydown', closeDeleteConfirmation)
+      document.removeEventListener('pointerdown', closeDeleteConfirmation)
+    }
+  }, [pendingDeleteId])
+
   const openReport = async (reportId) => {
     try {
       setError('')
@@ -80,20 +113,14 @@ function Reports() {
   }
 
   const deleteReport = async (reportId) => {
-    const shouldDelete = window.confirm(
-      'Delete this review report permanently?'
-    )
-
-    if (!shouldDelete) {
-      return
-    }
-
     try {
       setError('')
+      setNotice('')
+      setIsDeleting(true)
 
       const token = localStorage.getItem('token')
 
-      await api.delete(`/reports/${reportId}`, {
+      const response = await api.delete(`/reports/${reportId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -108,10 +135,15 @@ function Reports() {
       if (selectedReport?.id === reportId) {
         setSelectedReport(remainingReports[0] || null)
       }
+
+      setPendingDeleteId(null)
+      setNotice(response.data.message)
     } catch (err) {
       setError(
         err.response?.data?.detail || 'Failed to delete report.'
       )
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -318,6 +350,10 @@ function Reports() {
           <p className="feedback-message feedback-error">{error}</p>
         )}
 
+        {notice && (
+          <p className="feedback-message feedback-success">{notice}</p>
+        )}
+
         <div className="reports-layout">
           <aside className="reports-list">
             <div className="reports-list-header">
@@ -425,13 +461,68 @@ function Reports() {
                       >
                         <Download size={15} /> HTML
                       </button>
-                      <button
-                        className="delete-report-btn"
-                        type="button"
-                        onClick={() => deleteReport(selectedReport.id)}
+                      <div
+                        className="delete-report-action"
+                        ref={deleteActionRef}
                       >
-                        <Trash2 size={15} /> Delete
-                      </button>
+                        <button
+                          className="delete-report-btn"
+                          type="button"
+                          aria-expanded={
+                            pendingDeleteId === selectedReport.id
+                          }
+                          aria-haspopup="dialog"
+                          aria-controls="delete-report-confirmation"
+                          onClick={() => {
+                            setNotice('')
+                            setPendingDeleteId((currentId) =>
+                              currentId === selectedReport.id
+                                ? null
+                                : selectedReport.id
+                            )
+                          }}
+                        >
+                          <Trash2 size={15} /> Delete
+                        </button>
+
+                        {pendingDeleteId === selectedReport.id && (
+                          <div
+                            className="delete-confirmation-popover"
+                            id="delete-report-confirmation"
+                            role="dialog"
+                            aria-labelledby="delete-confirmation-title"
+                          >
+                            <strong id="delete-confirmation-title">
+                              Delete this report?
+                            </strong>
+                            <p>
+                              Report #{selectedReport.id} and its uploaded
+                              file will be permanently removed.
+                            </p>
+                            <div className="delete-confirmation-actions">
+                              <button
+                                className="delete-cancel-btn"
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={() => setPendingDeleteId(null)}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                className="delete-confirm-btn"
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={() =>
+                                  deleteReport(selectedReport.id)
+                                }
+                              >
+                                <Trash2 size={14} />
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 

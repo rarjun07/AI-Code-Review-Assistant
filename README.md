@@ -206,10 +206,22 @@ ALGORITHM=HS256
 
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
+AI_PROVIDER=auto
+
+HF_TOKEN=your_hugging_face_token_here
+
+HUGGINGFACE_MODEL=Qwen/Qwen2.5-Coder-32B-Instruct:cheapest
+
+HUGGINGFACE_BASE_URL=https://router.huggingface.co/v1
+
 OPENAI_API_KEY=your_openai_api_key_here
 
 OPENAI_MODEL=gpt-4.1-mini
 ```
+
+`AI_PROVIDER=auto` prefers Hugging Face when `HF_TOKEN` is configured and
+uses OpenAI as an optional fallback. Create the Hugging Face token with the
+**Make calls to Inference Providers** permission.
 
 ---
 
@@ -411,6 +423,18 @@ Display Report
 - Consistent design system, iconography, spacing, and mobile layouts
 - Improved login, registration, password reset, and profile experiences
 - Protected workspace routes and clearer form feedback
+
+---
+
+##  Day 14
+
+- Secure, time-limited password reset tokens
+- Single-use reset behavior after a password change
+- Generic recovery responses that prevent account discovery
+- Safer production defaults and environment configuration
+- Unique private filenames and automatic failed-upload cleanup
+- Analysis process timeouts and protected error responses
+- Security regression tests for authentication and uploads
 
 ---
 

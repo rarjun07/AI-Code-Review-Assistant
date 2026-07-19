@@ -9,6 +9,7 @@ from app.services.report_export_service import (
     build_report_markdown,
     build_report_pdf,
 )
+from app.services.upload_cleanup_service import delete_uploaded_source
 from app.utils.security import get_current_user
 
 
@@ -69,11 +70,33 @@ async def delete_report(
             detail="Report not found",
         )
 
-    db.delete(report)
-    db.commit()
+    uploaded_file = report.uploaded_file
+    uploaded_filepath = uploaded_file.filepath if uploaded_file else None
+
+    try:
+        db.delete(report)
+        db.flush()
+
+        if uploaded_file:
+            remaining_links = (
+                db.query(AnalysisReport)
+                .filter(AnalysisReport.upload_id == uploaded_file.id)
+                .count()
+            )
+
+            if remaining_links == 0:
+                db.delete(uploaded_file)
+
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    source_file_deleted = delete_uploaded_source(uploaded_filepath)
 
     return {
-        "message": "Report deleted successfully"
+        "message": "Report deleted successfully",
+        "source_file_deleted": source_file_deleted,
     }
 
 

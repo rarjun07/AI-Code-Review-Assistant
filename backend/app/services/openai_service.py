@@ -5,9 +5,14 @@ from openai import AuthenticationError, OpenAI, RateLimitError
 from app.config import settings
 
 
-def _empty_ai_review(status: str, message: str) -> dict:
+def _empty_ai_review(
+    status: str,
+    message: str,
+    provider: str = "none",
+) -> dict:
     return {
         "status": status,
+        "provider": provider,
         "overall_rating": "Not available",
         "summary": message,
         "severity_summary": {
@@ -147,24 +152,55 @@ def _normalize_ai_review(ai_review: dict) -> dict:
     return ai_review
 
 
+def _get_provider_configuration() -> dict | None:
+    if settings.AI_PROVIDER in {"auto", "huggingface"} and settings.HF_TOKEN:
+        return {
+            "name": "huggingface",
+            "label": "Hugging Face",
+            "api_key": settings.HF_TOKEN,
+            "model": settings.HUGGINGFACE_MODEL,
+            "base_url": settings.HUGGINGFACE_BASE_URL,
+        }
+
+    if settings.AI_PROVIDER in {"auto", "openai"} and settings.OPENAI_API_KEY:
+        return {
+            "name": "openai",
+            "label": "OpenAI",
+            "api_key": settings.OPENAI_API_KEY,
+            "model": settings.OPENAI_MODEL,
+            "base_url": None,
+        }
+
+    return None
+
+
 def generate_ai_review(
     code: str,
     pylint_report: dict,
     bandit_report: dict,
     radon_report: dict,
 ) -> dict:
-    if not settings.OPENAI_API_KEY:
+    provider = _get_provider_configuration()
+
+    if provider is None:
+        requested_provider = settings.AI_PROVIDER.title()
+
         return _empty_ai_review(
             "skipped",
-            "OpenAI API key is not configured. "
-            "Add OPENAI_API_KEY to backend/.env to enable AI review.",
+            f"{requested_provider} AI credentials are not configured. "
+            "Add HF_TOKEN (recommended) or OPENAI_API_KEY to backend/.env.",
         )
 
     try:
-        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        client_options = {"api_key": provider["api_key"]}
+
+        if provider["base_url"]:
+            client_options["base_url"] = provider["base_url"]
+
+        client = OpenAI(**client_options)
 
         response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
+            model=provider["model"],
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -187,23 +223,29 @@ def generate_ai_review(
         ai_review = json.loads(content)
         ai_review = _normalize_ai_review(ai_review)
         ai_review["status"] = "completed"
+        ai_review["provider"] = provider["name"]
 
         return ai_review
 
     except AuthenticationError:
         return _empty_ai_review(
             "failed",
-            "OpenAI API key is invalid. Update OPENAI_API_KEY in backend/.env and restart the backend.",
+            f"{provider['label']} credentials are invalid. Update the token "
+            "in backend/.env and restart the backend.",
+            provider["name"],
         )
 
     except RateLimitError:
         return _empty_ai_review(
             "failed",
-            "OpenAI API quota is not available. Check your OpenAI plan, billing, and usage limits, then try again.",
+            f"{provider['label']} quota is not available. Check the account's "
+            "credits and usage limits, then try again.",
+            provider["name"],
         )
 
     except Exception as exc:
         return _empty_ai_review(
             "failed",
-            f"AI review failed: {str(exc)}",
+            f"{provider['label']} AI review failed: {str(exc)}",
+            provider["name"],
         )

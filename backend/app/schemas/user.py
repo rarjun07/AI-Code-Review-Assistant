@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class UserCreate(BaseModel):
@@ -18,6 +18,11 @@ class UserCreate(BaseModel):
 
         return cleaned_name
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:
@@ -34,14 +39,12 @@ class UserCreate(BaseModel):
 
 
 class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     email: EmailStr
     created_at: datetime
-
-    class Config:
-        from_attributes = True
-
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -62,9 +65,23 @@ class UserUpdate(BaseModel):
 
         return cleaned_name
 
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
 
-class PasswordReset(BaseModel):
+
+class PasswordResetRequest(BaseModel):
     email: EmailStr
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: EmailStr) -> str:
+        return str(value).strip().lower()
+
+
+class PasswordResetConfirm(BaseModel):
+    reset_token: str = Field(min_length=20, max_length=2048)
     new_password: str = Field(min_length=8, max_length=128)
 
     @field_validator("new_password")
