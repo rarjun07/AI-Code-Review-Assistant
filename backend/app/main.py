@@ -2,8 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.database import Base, engine, ensure_analysis_report_columns
-from app.models import User
 from app.routes.auth import router as auth_router
 from app.routes.reports import (
     delete_report,
@@ -21,14 +19,11 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL],
+    allow_origins=settings.allowed_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-Base.metadata.create_all(bind=engine)
-ensure_analysis_report_columns()
 
 app.include_router(auth_router)
 app.post("/upload/code", tags=["Upload"])(upload_code_file)

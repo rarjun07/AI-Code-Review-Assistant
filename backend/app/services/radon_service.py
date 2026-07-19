@@ -1,19 +1,20 @@
-import subprocess
+import subprocess  # nosec B404
 import re
+import sys
 
 
 def run_radon(file_path: str):
     # Cyclomatic Complexity
-    cc_result = subprocess.run(
-        ["radon", "cc", file_path, "-s"],
+    cc_result = subprocess.run(  # nosec B603
+        [sys.executable, "-m", "radon", "cc", file_path, "-s"],
         capture_output=True,
         text=True,
         timeout=30,
     )
 
     # Maintainability Index
-    mi_result = subprocess.run(
-        ["radon", "mi", file_path],
+    mi_result = subprocess.run(  # nosec B603
+        [sys.executable, "-m", "radon", "mi", file_path],
         capture_output=True,
         text=True,
         timeout=30,

@@ -14,6 +14,7 @@ from app.services.documentation_service import generate_documentation
 from app.services.openai_service import generate_ai_review
 from app.services.pylint_service import run_pylint
 from app.services.radon_service import run_radon
+from app.services.upload_cleanup_service import delete_uploaded_source
 from app.utils.security import get_current_user
 from app.utils.validation import validate_python_upload
 
@@ -47,7 +48,7 @@ async def upload_code_file(
         db.add(uploaded_file)
         db.flush()
 
-        pylint_report = run_pylint(str(file_path))
+        pylint_report = run_pylint(str(file_path), safe_filename)
         bandit_report = run_bandit(str(file_path))
         radon_report = run_radon(str(file_path))
         code = content.decode("utf-8", errors="replace")
@@ -94,18 +95,10 @@ async def upload_code_file(
 
     except HTTPException:
         db.rollback()
-
-        if file_path and file_path.exists():
-            file_path.unlink()
-
         raise
 
     except Exception as exc:
         db.rollback()
-
-        if file_path and file_path.exists():
-            file_path.unlink()
-
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="File analysis failed. Please try again.",
@@ -113,6 +106,7 @@ async def upload_code_file(
 
     finally:
         await file.close()
+        delete_uploaded_source(str(file_path) if file_path else None)
 
 
 async def get_upload_history(
@@ -121,7 +115,14 @@ async def get_upload_history(
 ):
     uploads = (
         db.query(UploadedFile)
-        .filter(UploadedFile.uploaded_by == current_user.id)
+        .join(
+            AnalysisReport,
+            AnalysisReport.upload_id == UploadedFile.id,
+        )
+        .filter(
+            UploadedFile.uploaded_by == current_user.id,
+            AnalysisReport.user_id == current_user.id,
+        )
         .order_by(UploadedFile.uploaded_at.desc())
         .all()
     )

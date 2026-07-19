@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -6,6 +8,8 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+from app.services.password_reset_email_service import send_password_reset_email
+from app.services.password_reset_rate_limit_service import password_reset_rate_limiter
 from app.schemas.user import (
     PasswordResetConfirm,
     PasswordResetRequest,
@@ -28,6 +32,8 @@ router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
+
+logger = logging.getLogger(__name__)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -84,10 +90,8 @@ def login_user(
         data={"sub": user.email}
     )
 
-    return {
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+    # "bearer" is the OAuth token type, not a credential.
+    return {"access_token": access_token, "token_type": "bearer"}  # nosec
 
 
 @router.get("/me", response_model=UserResponse)
@@ -135,8 +139,17 @@ def update_profile(
 @router.post("/password-reset/request")
 def request_password_reset(
     password_data: PasswordResetRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    client_ip = request.client.host if request.client else "unknown"
+
+    if not password_reset_rate_limiter.allow(password_data.email, client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many password reset requests. Please try again later.",
+        )
+
     user = db.query(User).filter(User.email == password_data.email).first()
 
     response = {
@@ -146,14 +159,22 @@ def request_password_reset(
         )
     }
 
-    if user and settings.DEBUG:
-        response["reset_token"] = create_password_reset_token(
+    if user:
+        reset_token = create_password_reset_token(
             user.id,
             user.password_hash,
         )
 
-    # Production deployments should email a URL containing this token.
-    # It is returned only in explicit DEBUG mode for local demonstrations.
+        if settings.DEBUG:
+            response["reset_token"] = reset_token
+        else:
+            try:
+                send_password_reset_email(user.email, reset_token)
+            except Exception:
+                # Keep the public response identical for existing and unknown
+                # accounts. Provider failures remain visible in server logs.
+                logger.exception("Password reset email delivery failed")
+
     return response
 
 

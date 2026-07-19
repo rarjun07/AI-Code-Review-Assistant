@@ -9,7 +9,8 @@ This folder contains the FastAPI backend for the AI Code Review Assistant.
 - Python
 - Pydantic
 - Uvicorn
-- OpenAI API
+- Hugging Face Inference Providers (recommended free tier)
+- OpenAI API (optional fallback)
 
 
 ## Environment
@@ -21,9 +22,16 @@ DATABASE_URL=postgresql://username:password@localhost:5432/ai_code_review_db
 SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+AI_PROVIDER=auto
+HF_TOKEN=your_hugging_face_token_here
+HUGGINGFACE_MODEL=Qwen/Qwen2.5-Coder-32B-Instruct:cheapest
+HUGGINGFACE_BASE_URL=https://router.huggingface.co/v1
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-4.1-mini
 ```
+
+With `AI_PROVIDER=auto`, Hugging Face is used when `HF_TOKEN` is set.
+Otherwise, the backend uses OpenAI when `OPENAI_API_KEY` is available.
 
   
 ## Run
@@ -36,6 +44,8 @@ python3 -m venv venv
 source venv/bin/activate
 
 pip install -r requirements.txt
+
+alembic upgrade head
 
 uvicorn app.main:app --reload
 ```

@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+.coverage
+htmlcov/
 
 # Environment
 .env
@@ -31,3 +33,4 @@ frontend/node_modules/
 # Build
 dist/
 build/
+/tmp/

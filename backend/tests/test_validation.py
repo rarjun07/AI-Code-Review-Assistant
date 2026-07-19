@@ -1,6 +1,7 @@
 import unittest
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
@@ -21,6 +22,9 @@ from app.schemas.user import (
     UserUpdate,
 )
 from app.services.documentation_service import generate_documentation
+from app.services.password_reset_rate_limit_service import (
+    password_reset_rate_limiter,
+)
 from app.services.report_export_service import (
     build_report_html,
     build_report_markdown,
@@ -166,6 +170,7 @@ class PasswordResetEndpointTests(unittest.TestCase):
         self.client = TestClient(test_app)
         self.previous_debug = settings.DEBUG
         settings.DEBUG = True
+        password_reset_rate_limiter.clear()
 
         database = self.session_factory()
         database.add(
@@ -180,6 +185,7 @@ class PasswordResetEndpointTests(unittest.TestCase):
 
     def tearDown(self):
         settings.DEBUG = self.previous_debug
+        password_reset_rate_limiter.clear()
         self.engine.dispose()
 
     def test_reset_request_does_not_reveal_account_existence(self):
@@ -230,6 +236,23 @@ class PasswordResetEndpointTests(unittest.TestCase):
         user = database.query(User).filter_by(email="arjun@example.com").one()
         self.assertTrue(verify_password("NewPassword456", user.password_hash))
         database.close()
+
+    def test_production_reset_sends_email_without_returning_token(self):
+        settings.DEBUG = False
+
+        with patch(
+            "app.routes.auth.send_password_reset_email",
+            return_value=True,
+        ) as send_email:
+            response = self.client.post(
+                "/auth/password-reset/request",
+                json={"email": "arjun@example.com"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("reset_token", response.json())
+        send_email.assert_called_once()
+        self.assertEqual(send_email.call_args.args[0], "arjun@example.com")
 
     def test_access_token_cannot_be_used_as_reset_token(self):
         access_style_token = jwt.encode(

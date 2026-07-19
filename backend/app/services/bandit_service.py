@@ -1,10 +1,13 @@
 import json
-import subprocess
+import subprocess  # nosec B404
+import sys
 
 
 def run_bandit(file_path: str):
-    result = subprocess.run(
+    result = subprocess.run(  # nosec B603
         [
+            sys.executable,
+            "-m",
             "bandit",
             "-f",
             "json",
